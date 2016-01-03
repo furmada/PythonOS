@@ -1,0 +1,14 @@
+{
+  "name": "launcher",
+  "title": "Launcher",
+  "version": 1.0,
+  "author": "Adam Furman",
+  "module": "launcher",
+  "main": "run",
+  "more": {
+    "icon": null,
+    "onStart": "loadApps",
+    "persist": false,
+    "colorScheme": "light"
+  }
+}

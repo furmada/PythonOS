@@ -1,0 +1,5 @@
+{
+  "apps/launcher/": "launcher",
+  "apps/home/": "home",
+  "apps/state-shell/": "state-shell"
+}

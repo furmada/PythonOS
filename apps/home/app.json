@@ -1,0 +1,12 @@
+{
+  "name": "home",
+  "title": "Home",
+  "version": 1.0,
+  "author": "Adam Furman",
+  "module": "home",
+  "main": "run",
+  "more": {
+    "icon": null,
+    "onStart": "onLoad"
+  }
+}
