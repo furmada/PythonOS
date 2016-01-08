@@ -1,0 +1,14 @@
+{
+  "name": "quit",
+  "title": "Quit",
+  "version": 1.0,
+  "author": "Adam Furman",
+  "module": "quit",
+  "main": "run",
+  "more": {
+    "icon": "quit",
+    "onStart": "onLoad",
+    "colorScheme": "normal",
+    "persist": false
+  }
+}
