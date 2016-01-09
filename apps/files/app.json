@@ -1,0 +1,13 @@
+{
+  "name": "files",
+  "title": "Files",
+  "version": 1.0,
+  "author": "Adam Furman",
+  "module": "files",
+  "main": "run",
+  "more": {
+    "icon": "files.png",
+    "onStart": "onStart",
+    "colorScheme": "normal"
+  }
+}

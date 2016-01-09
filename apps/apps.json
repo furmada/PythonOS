@@ -3,5 +3,6 @@
   "apps/home/": "home",
   "apps/state-shell/": "state-shell",
   "apps/quit/": "quit",
-  "apps/task-manager/": "task-manager"
+  "apps/task-manager/": "task-manager",
+  "apps/files/": "files"
 }

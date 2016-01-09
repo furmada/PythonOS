@@ -464,7 +464,8 @@ class GUI(object):
             self.childComponents.remove(component)
             
         def clearChildren(self):
-            self.childComponents = []
+            for component in self.childComponents:
+                self.removeChild(component)
             
         def getClickedChild(self, mouseEvent, offsetX=0, offsetY=0):
             currChild = len(self.childComponents)
@@ -839,9 +840,17 @@ class GUI(object):
                 self.addChild(child)
                 
         def removePage(self, page):
-            self.pages.pop(page)
+            if type(page) == int:
+                self.pages.pop(page)
+            else:
+                self.pages.remove(page)
             if self.currentPage >= len(self.pages):
                 self.goToPage(self.currentPage - 1)
+                
+        def clearChildren(self):
+            self.pages = []
+            self.addPage(self.generatePage(color=self.backgroundColor))
+            self.goToPage()
             
     class GriddedPagedContainer(PagedContainer):
         def __init__(self, position, rows=5, columns=4, **data):
@@ -1019,7 +1028,7 @@ class GUI(object):
                 self.baseContainer = GUI.Container((0, state.getGUI().height-baseContainerHeight), width=state.getGUI().width, height=100)
                 self.keyboardContainer.position[1] = self.textEntryField.height
                 self.textEntryField.setPosition([0, 0])
-                self.baseContainer.addChild(self.TextEntryField)
+                self.baseContainer.addChild(self.textEntryField)
                 self.baseContainer.addChild(self.keyboardContainer)
                 
         def setOnEnter(self, value="return"):
@@ -1138,9 +1147,10 @@ class GUI(object):
                                width=50, onClick=self.returnRecordedResponse)
             cancelbtn = GUI.Button((0,0), "Cancel", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
                                width=50, onClick=self.recordResponse, onClickData=("Cancel",))
-            self.textComponent.height -= 20
-            self.textEntryField = GUI.TextEntryField((0, 90), width=self.component.width, height=20)
             super(GUI.AskDialog, self).__init__(title, text, [okbtn, cancelbtn], onResposeRecorded)
+            self.textComponent.height -= 20
+            self.textComponent.refresh()
+            self.textEntryField = GUI.TextEntryField((0, 90), width=self.container.width, height=20)
             
         def returnRecordedResponse(self):
             super(GUI.AskDialog, self).recordResponse(self.textEntryField.getText())
@@ -1242,7 +1252,9 @@ class Application(object):
         except: pass
         #check for and load event handlers
         self.evtHandlers = {}
-        if "onStart" in self.parameters: self.evtHandlers["onStart"] = [getattr(self.module, self.parameters["onStart"]), (state, self)]
+        if "onStart" in self.parameters: 
+            self.evtHandlers["onStartReal"] = self.parameters["onStart"]
+        self.evtHandlers["onStart"] = [self.onStart, ()]
         if "onStop" in self.parameters: self.evtHandlers["onStop"] = getattr(self.module, self.parameters["onStop"])
         if "onPause" in self.parameters: self.evtHandlers["onPause"] = getattr(self.module, self.parameters["onPause"])
         if "onResume" in self.parameters: self.evtHandlers["onResume"] = getattr(self.module, self.parameters["onResume"])
@@ -1251,9 +1263,15 @@ class Application(object):
         self.ui = GUI.AppContainer(self)
         infofile.close()
         self.loadColorScheme()
+        self.thread = Thread(self.mainMethod, **self.evtHandlers)
         
     def chainRefresh(self):
         self.ui.refresh()
+        
+    def onStart(self):
+        self.ui = GUI.AppContainer(self)
+        self.loadColorScheme()
+        if "onStartReal" in self.evtHandlers: getattr(self.module, self.evtHandlers["onStartReal"])(state, self)
         
     def loadColorScheme(self):
         if "colorScheme" in self.parameters: 
@@ -1295,8 +1313,6 @@ class Application(object):
         
     def uninstall(self):
         rmtree(self.location, True)
-        try: os.rmdir(self.location)
-        except: print "Failed to remove application directory " + self.location
         Application.removeListing(self.location)
         
 class ApplicationList(object):    
