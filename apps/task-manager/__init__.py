@@ -11,7 +11,7 @@ def buildAppEntry(a):
         icon = pyos.GUI.Image((0,0), surface=a.getIcon())
     else:
         icon = pyos.GUI.Image((0,0), surface=state.getIcons().getLoadedIcon("unknown"))
-    title = pyos.GUI.Text((40, 10), a.title, state.getColorPalette().getColor("item"), 20, width=98)
+    title = pyos.GUI.Text((40, 10), a.title, state.getColorPalette().getColor("item"), 20)
     pauseBtn = pyos.GUI.Button((138, 0), "Pause", state.getColorPalette().getColor("background"), state.getColorPalette().getColor("item"),
                                20, width=50, height=40, border=1, borderColor=state.getColorPalette().getColor("accent"),
                                onClick=registerPauseClick, onClickData=(a, cont))

@@ -1,5 +1,5 @@
 import pyos
-from shutil import move, copy2
+from shutil import move, copy2, copytree
 
 application = None
 state = None
@@ -58,7 +58,10 @@ class Operations:
         global selected
         for path in selected:
             if path.rstrip("\\")[:path.rstrip("\\").rfind("\\")] == location.rstrip("\\"): continue
-            move(path.rstrip("\\")[:path.rstrip("\\").rfind("\\")], location)
+            if pyos.os.path.isfile(path):
+                move(path.rstrip("\\"), location)
+            if pyos.os.path.isdir(path):
+                move(path, location)
             selected.remove(path)
             
     @staticmethod
@@ -66,7 +69,10 @@ class Operations:
         global selected
         for path in selected:
             if path.rstrip("\\")[:path.rstrip("\\").rfind("\\")] == location.rstrip("\\"): continue
-            copy2(path.rstrip("\\")[:path.rstrip("\\").rfind("\\")], location)
+            if pyos.os.path.isfile(path):
+                copy2(path.rstrip("\\"), location)
+            if pyos.os.path.isdir(path):
+                copytree(path, location)
             selected.remove(path)
             
 def loadLocation(loc):
@@ -132,6 +138,7 @@ def toggleSelect(cont, path):
         select(cont, path)
         
 def openFile(path):
+    print "> "+path
     if pyos.os.path.isdir(path):
         loadLocation(path)
     else:
@@ -139,7 +146,11 @@ def openFile(path):
 
 def getFileEntry(path):
     name = path.rstrip("\\")[path.rstrip("\\").rfind("\\")+1:]
-    cont = pyos.GUI.Container((0,0), width=application.ui.width, height=30, color=state.getColorPalette().getColor("background"), fullPath=path)
+    if name.startswith("."): return False
+    cont = pyos.GUI.Container((0,0), width=application.ui.width, height=30, color=state.getColorPalette().getColor("background"), fullPath=path,
+                              onClick=openFile, onClickData=(path,))
+    if path in selected:
+        cont.backgroundColor = state.getColorPalette().getColor("accent")
     icon = None
     if pyos.os.path.isfile(path):
         icon = pyos.GUI.Image((0,0), path="res/icons/file.png", width=30, height=30,
@@ -150,10 +161,13 @@ def getFileEntry(path):
     text = pyos.GUI.Text((35, 7), name, state.getColorPalette().getColor("item"), 15,
                          onClick=openFile, onClickData=(path,))
     sizeText = "-"
-    try:
-        sizeText = str(pyos.os.path.getsize(path) / 1000)+"kb"
-    except:
-        pass
+    if pyos.os.path.isfile(path):
+        try:
+            sizeText = str(pyos.os.path.getsize(path) / 1000)+"kb"
+        except:
+            sizeText = "0kb"
+    elif pyos.os.path.isdir(path):
+        sizeText = "dir"
     size = pyos.GUI.Text((application.ui.width-35, 7), sizeText, state.getColorPalette().getColor("item"), 15)
     cont.addChild(icon)
     cont.addChild(text)
@@ -161,13 +175,17 @@ def getFileEntry(path):
     return cont
 
 def load():
+    print "Loading "+location
     pathText.text = location
     pathText.refresh()
     try:
         container.clearChildren()
     except: pass
     for loc in pyos.os.listdir(location):
-        container.addChild(getFileEntry(pyos.os.path.join(location, loc)))
+        print "  Subentry "+loc
+        entry = getFileEntry(pyos.os.path.join(location, loc))
+        if entry:
+            container.addChild(entry)
     container.goToPage()
     container.refresh()
 
@@ -175,7 +193,7 @@ def onStart(s, a):
     global application, state, container, pathText
     application = a
     state = s
-    container = pyos.GUI.ListPagedContainer((0,50), width=application.ui.width, height=application.ui.height-50)
+    container = pyos.GUI.ListPagedContainer((0,50), width=application.ui.width, height=application.ui.height-50, padding=0, margin=0)
     pathText = pyos.GUI.Text((0, 40), location, state.getColorPalette().getColor("item"), 10, width=application.ui.width)
     bar = getDefaultButtonBar()
     application.ui.addChild(bar)
