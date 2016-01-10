@@ -4,5 +4,6 @@
   "apps/state-shell/": "state-shell",
   "apps/quit/": "quit",
   "apps/task-manager/": "task-manager",
-  "apps/files/": "files"
+  "apps/files/": "files",
+  "apps/about/": "about"
 }

@@ -1,0 +1,13 @@
+{
+  "name": "about",
+  "title": "About",
+  "version": 1.0,
+  "author": "Adam Furman",
+  "module": "about",
+  "main": "run",
+  "more": {
+    "icon": "about.png",
+    "onStart": "onStart",
+    "colorScheme": "dark"
+  }
+}

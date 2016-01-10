@@ -37,7 +37,7 @@ def getAppsForFileType(ftype):
 
 def getFolder(path):
     if path.find("/") != -1:
-        return path.rstrip("/")[:path.rstrip("/").rfind("/")]
+        return path[:path.rfind("/")]
     return path.rstrip("\\")[:path.rstrip("\\").rfind("\\")]
 
 def goToPath():
