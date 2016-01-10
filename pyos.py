@@ -878,8 +878,6 @@ class GUI(object):
                 self.getLastPage().addChild(component)
                 return
             lastChildPosition = self.getLastPage().childComponents[len(self.getLastPage().childComponents) - 1].position[:]
-            print lastChildPosition
-            print self.padding + (self.perColumn * self.columns)
             if lastChildPosition[0] < self.padding + (self.perColumn * (self.columns - 1)):
                 newChildPosition = [lastChildPosition[0]+self.perColumn, lastChildPosition[1]]
             else:
@@ -909,6 +907,7 @@ class GUI(object):
                 componentHeight = self.getHeightOfComponents()
             component.setPosition([self.padding, componentHeight])
             self.getLastPage().addChild(component)
+            component.refresh()
             
     class ButtonRow(Container):
         def __init__(self, position, **data):
@@ -938,7 +937,86 @@ class GUI(object):
             self.clearChildren()
             for child in childrenCopy:
                 self.addChild(child)
+                
+    class ScrollableContainer(Container):
+        def __init__(self, position, **data): 
+            self.scrollAmount = data.get("scrollAmount", 5) 
+            super(GUI.ScrollableContainer, self).__init__(position, **data)
+            self.container = GUI.Container((0, 0), transparent=True, width=self.width-20, height=self.height)
+            self.scrollBar = GUI.Container((self.width-20, 0), width=20, height=self.height)
+            self.scrollUpBtn = GUI.Image((0, 0), path="res/scrollup.png", width=20, height=40,
+                                         onClick=self.scroll, onClickData=(self.scrollAmount))
+            self.scrollDownBtn = GUI.Image((0, 0), path="res/scrolldown.png", width=20, height=40,
+                                         onClick=self.scroll, onClickData=(-self.scrollAmount))
+            self.scrollIndicator = GUI.Canvas((0, 40), width=20, height=self.height-80)
+            self.scrollIndicator.getSurface().fill(state.getColorPalette().getColor("item"))
+            self.scrollBar.addChild(self.scrollUpBtn)
+            self.scrollBar.addChild(self.scrollIndicator)
+            self.scrollBar.addChild(self.scrollDownBtn)
+            super(GUI.ScrollableContainer, self).addChild(self.container)
+            super(GUI.ScrollableContainer, self).addChild(self.scrollBar)
+            self.offset = 0
+            self.minOffset = 0
+            self.maxOffset = 0
             
+        def scroll(self, amount):
+            if amount < 0 and self.offset + amount < self.minOffset: return
+            if amount > 0 and self.offset + amount > self.maxOffset: return
+            for child in self.container.childComponents:
+                child.setPosition([child.position[0], child.position[1]+amount])
+            self.offset += amount
+            self.scrollIndicator.getSurface().fill(state.getColorPalette().getColor("item"))
+            siHeight = (self.maxOffset-self.minOffset) / self.height
+            pygame.draw.rect(self.scrollIndicator.getSurface(), state.getColorPalette().getColor("accent"),
+                             [0, (self.height / 2)-(siHeight / 2), 20, siHeight])
+                
+        def getVisibleChildren(self):
+            visible = []
+            for child in self.container.childComponents:
+                if child.position[1] >= 0 and child.position[1] <= self.height:
+                    visible.append(child)
+            return visible
+        
+        def getClickedChild(self, mouseEvent, offsetX=0, offsetY=0):
+            clicked = self.scrollBar.getClickedChild(mouseEvent, offsetX, offsetY)
+            if clicked != None: return clicked
+            visible = self.getVisibleChildren()
+            currChild = len(visible)
+            while currChild > 0:
+                currChild -= 1
+                child = self.visible[currChild]
+                if "SKIP_CHILD_CHECK" in child.__dict__:
+                    if child.SKIP_CHILD_CHECK:
+                        if child.checkClick(mouseEvent, offsetX + self.position[0], offsetY + self.position[1]):
+                            return child
+                        else:
+                            continue
+                    else:
+                        subCheck = child.getClickedChild(mouseEvent, offsetX + self.position[0], offsetY + self.position[1])
+                        if subCheck == None: continue
+                        return subCheck
+                else:
+                    if child.checkClick(mouseEvent, offsetX, offsetY):
+                        return child
+            if self.checkClick(mouseEvent, offsetX, offsetY):
+                return self
+            return None
+        
+        def addChild(self, component):
+            if component.position[1] < self.minOffset: self.minOffset = component.position[1]
+            if component.position[1]+component.height > self.maxOffset: self.maxOffset = component.position[1]+component.height
+            self.container.addChild(component)
+            
+        def removeChild(self, component):
+            self.container.removeChild(component)
+            if component.position[1] == self.minOffset:
+                self.minOffset = 0
+                for comp in self.container.childComponents:
+                    if comp.position[1] < self.minOffset: self.minOffset = comp.position[1]
+            if component.position[1] == self.maxOffset:
+                self.maxOffset = 0
+                for comp in self.container.childComponents:
+                    if comp.position[1]+comp.height > self.maxOffset: self.maxOffset = comp.position[1]+comp.height
             
     class FunctionBar(object):
         def __init__(self):
@@ -1171,8 +1249,67 @@ class GUI(object):
             self.container.addChild(self.buttonRow)
             self.baseContainer.addChild(self.container)
             self.onResponseRecorded = onResponseRecorded
-    
-         
+            
+    class Overlay(object): #Is dialog-like
+        def __init__(self, position, **data):
+            self.position = list(position)
+            self.width = data.get("width", state.getGUI().width)
+            self.height = data.get("height", state.getGUI().height-40)
+            self.color = data.get("color", state.getColorPalette().getColor("background"))
+            self.baseContainer = data.get("container", GUI.Container((0, 0), width=self.width, height=self.height, color=self.color))
+            self.application = state.getActiveApplication()
+            
+        def display(self):
+            self.application.ui.setDialog(self)
+        
+        def hide(self):
+            self.application.ui.clearDialog()
+            self.application.ui.refresh()
+            
+        def addChild(self, child):
+            self.baseContainer.addChild(child)
+            
+    class Selector(Container):      
+        def __init__(self, position, items, **data):
+            self.onValueChanged = data.get("onValueChanged", Application.dummy)
+            self.onValueChangedData = data.get("onValueChangedData", ())
+            self.overlay = GUI.Overlay((20, 20), width=state.getGUI().width-40, height=state.getGUI().height-80)
+            data["onClick"] = self.overlay.display()
+            for comp in GUI.Selector.generateItemSequence(items, 14, state.getColorPalette().getColor("item")):
+                self.overlay.addChild(comp)
+            super(GUI.Selector, self).__init__(position, **data)
+            self.SKIP_CHILD_CHECK = True
+            self.textColor = data.get("textColor", state.getColorPalette().getColor("background"))
+            self.items = items
+            self.currentItem = self.items[0]
+            self.textComponent = GUI.Text((0,0), self.currentItem, self.textColor, 14)
+            self.textComponent.setPosition([2, GUI.getCenteredCoordinates(self.textComponent, self)[1]])
+            
+        def generateItemSequence(self, items, size=14, color=(0,0,0)):
+            comps = []
+            acc_height = 0
+            for item in items:
+                elem = GUI.Text((0, acc_height), item, color, size, border=1, borderColor=(20,20,20),
+                                onClick=self.onClick, onClickData=(item,))
+                comps.append(elem)
+                acc_height += elem.height
+            return comps
+            
+        def onClick(self, newVal):
+            self.overlay.hide()
+            self.currentItem = newVal
+            self.textComponent.text = self.currentItem
+            self.textComponent.refresh()
+            self.onValueChanged(self.onValueChangedData + (newVal,))
+            
+        def render(self, largerSurface):
+            super(GUI.Selector, self).render(largerSurface)
+            pygame.draw.circle(largerSurface, state.getColorPalette().getColor("accent"), (self.position[0]+self.width-(self.height/2)-2, self.position[1]+(self.height/2)), self.height/2)
+                                    
+        def getClickedChild(self, mouseEvent, offsetX=0, offsetY=0):
+            if self.checkClick(mouseEvent, offsetX, offsetY):
+                return self
+            return None
         
 class Application(object):  
     @staticmethod
@@ -1274,7 +1411,7 @@ class Application(object):
         self.ui = GUI.AppContainer(self)
         self.loadColorScheme()
         if "onStartReal" in self.evtHandlers: getattr(self.module, self.evtHandlers["onStartReal"])(state, self)
-        
+                        
     def loadColorScheme(self):
         if "colorScheme" in self.parameters: 
             state.getColorPalette().setScheme(self.parameters["colorScheme"])

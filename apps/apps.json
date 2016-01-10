@@ -5,5 +5,6 @@
   "apps/quit/": "quit",
   "apps/task-manager/": "task-manager",
   "apps/files/": "files",
-  "apps/about/": "about"
+  "apps/about/": "about",
+  "apps/file-reader/": "file-reader"
 }

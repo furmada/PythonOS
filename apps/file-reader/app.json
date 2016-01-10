@@ -1,0 +1,17 @@
+{
+  "name": "file-reader",
+  "title": "Reader",
+  "version": 1.0,
+  "author": "Adam Furman",
+  "module": "file-reader",
+  "main": "run",
+  "more": {
+  	"icon": null,
+    "onStart": "onStart",
+    "colorScheme": "light",
+    "file": {
+      "method": "loadFile",
+      "supported": [".txt", ".htm", ".html", ".py", ".pyw", ".json", ".md"]
+    }
+  }
+}
