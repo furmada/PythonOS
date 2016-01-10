@@ -878,7 +878,9 @@ class GUI(object):
                 self.getLastPage().addChild(component)
                 return
             lastChildPosition = self.getLastPage().childComponents[len(self.getLastPage().childComponents) - 1].position[:]
-            if lastChildPosition[0] < self.padding + (self.perColumn * self.columns):
+            print lastChildPosition
+            print self.padding + (self.perColumn * self.columns)
+            if lastChildPosition[0] < self.padding + (self.perColumn * (self.columns - 1)):
                 newChildPosition = [lastChildPosition[0]+self.perColumn, lastChildPosition[1]]
             else:
                 newChildPosition = [self.padding, lastChildPosition[1]+self.perRow]
