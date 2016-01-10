@@ -35,6 +35,11 @@ def getAppsForFileType(ftype):
             apps.append(app)
     return apps
 
+def getFolder(path):
+    if path.find("/") != -1:
+        return path.rstrip("/")[:path.rstrip("/").rfind("/")]
+    return path.rstrip("\\")[:path.rstrip("\\").rfind("\\")]
+
 def goToPath():
     dialog = pyos.GUI.AskDialog("Location", "Enter the path of the location you want to navigate to.", loadLocation)
     dialog.display()
@@ -57,9 +62,9 @@ class Operations:
     def move():
         global selected
         for path in selected:
-            if path.rstrip("\\")[:path.rstrip("\\").rfind("\\")] == location.rstrip("\\"): continue
+            if getFolder(path) == location.rstrip("\\").rstrip("/"): continue
             if pyos.os.path.isfile(path):
-                move(path.rstrip("\\"), location)
+                move(path.rstrip("\\").rstrip("/"), location)
             if pyos.os.path.isdir(path):
                 move(path, location)
             selected.remove(path)
@@ -68,9 +73,9 @@ class Operations:
     def copy():
         global selected
         for path in selected:
-            if path.rstrip("\\")[:path.rstrip("\\").rfind("\\")] == location.rstrip("\\"): continue
+            if getFolder(path) == location.rstrip("\\").rstrip("/"): continue
             if pyos.os.path.isfile(path):
-                copy2(path.rstrip("\\"), location)
+                copy2(path.rstrip("\\").rstrip("/"), location)
             if pyos.os.path.isdir(path):
                 copytree(path, location)
             selected.remove(path)
@@ -80,7 +85,10 @@ def loadLocation(loc):
     load()
     
 def up():
-    loadLocation(location.rstrip("\\")[:location.rstrip("\\").rfind("\\")+1])
+    if location.find("/") != -1:
+        loadLocation(location.rstrip("/")[:location.rstrip("/").rfind("/")+1])
+    else:
+        loadLocation(location.rstrip("\\")[:location.rstrip("\\").rfind("\\")+1])
 
 def getDefaultButtonBar():
     buttonBar = pyos.GUI.ButtonRow((0, 0), width=application.ui.width, height=40, color=state.getColorPalette().getColor("background"), padding=0, margin=0,
@@ -145,7 +153,11 @@ def openFile(path):
         print "Is a file"
 
 def getFileEntry(path):
-    name = path.rstrip("\\")[path.rstrip("\\").rfind("\\")+1:]
+    name = "entry"
+    if path.find("/") != -1:
+        name = path.rstrip("/")[path.rstrip("/").rfind("/")+1:]
+    else:
+        name = path.rstrip("\\")[path.rstrip("\\").rfind("\\")+1:]
     if name.startswith("."): return False
     cont = pyos.GUI.Container((0,0), width=application.ui.width, height=30, color=state.getColorPalette().getColor("background"), fullPath=path,
                               onClick=openFile, onClickData=(path,))
@@ -166,8 +178,9 @@ def getFileEntry(path):
             sizeText = str(pyos.os.path.getsize(path) / 1000)+"kb"
         except:
             sizeText = "0kb"
-    elif pyos.os.path.isdir(path):
-        sizeText = "dir"
+    else:
+        if pyos.os.path.isdir(path):
+            sizeText = "dir"
     size = pyos.GUI.Text((application.ui.width-35, 7), sizeText, state.getColorPalette().getColor("item"), 15)
     cont.addChild(icon)
     cont.addChild(text)
