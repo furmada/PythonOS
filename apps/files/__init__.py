@@ -13,6 +13,8 @@ selected = []
 
 pathText = None
 container = None
+
+picker = None
     
 def loadFileOpeners():
     global fileOpeners
@@ -64,8 +66,13 @@ def goToPath():
     dialog = pyos.GUI.AskDialog("Location", "Enter the path of the location you want to navigate to.", navigator.toAbs)
     dialog.display()
     
-def passSelectedDir(to):
-    to(navigator.path)
+def passSelectedDir(to, overlay):
+    if len(selected) == 0:
+        to([navigator.path])
+        overlay.hide()
+        return
+    to(selected)
+    overlay.hide()
     
 class Operations:
     @staticmethod
@@ -114,9 +121,12 @@ class Navigator(object):
         self.path = str(pyos.__file__).rstrip("pyos.py").rstrip("pyos.pyc")
         load()
         
-    def toSub(self, sub):
+    def toSub(self, sub, selMode=False):
         combined = pyos.os.path.join(self.path, sub)
         if pyos.os.path.isfile(combined):
+            if selMode:
+                picker.select(combined)
+                return
             appSelDialog(combined, sub)
         else:
             if pyos.os.path.isdir(combined):
@@ -124,6 +134,7 @@ class Navigator(object):
                 load()
                 
     def toAbs(self, path):
+        if path == "Cancel": return
         self.path = path
         load()
         
@@ -159,11 +170,11 @@ def getDefaultButtonBar():
     buttonBar.addChild(button_copy)
     return buttonBar
 
-def getSelectButtonBar(passTo):
+def getSelectButtonBar():
     buttonBar = pyos.GUI.ButtonRow((0, 0), width=application.ui.width, height=40, color=state.getColorPalette().getColor("background"), padding=0, margin=0,
                                    border=1, borderColor=state.getColorPalette().getColor("accent"))
     button_select = pyos.GUI.Image((0,0), path="res/icons/files_select.png", width=40, height=40,
-                                 onClick=passSelectedDir, onClickData=(passTo,))
+                                 onClick=picker.select, onClickData=("current",))
     button_home = pyos.GUI.Image((0,0), path="res/icons/files_home.png", width=40, height=40,
                                  onClick=navigator.home)
     button_up = pyos.GUI.Image((0,0), path="res/icons/files_up.png", width=40, height=40,
@@ -191,11 +202,11 @@ def toggleSelect(cont, path):
     else:
         select(cont, path)
 
-def getFileEntry(path):
+def getFileEntry(path, selMode=False):
     if path.startswith("."): return False
     abspath = navigator.subToAbs(path)
-    cont = pyos.GUI.Container((0,0), width=application.ui.width, height=30, color=state.getColorPalette().getColor("background"), fullPath=abspath,
-                              onClick=navigator.toSub, onClickData=(path,))
+    cont = pyos.GUI.Container((-1000,-20), width=application.ui.width, height=30, color=state.getColorPalette().getColor("background"), fullPath=abspath,
+                              onClick=navigator.toSub, onClickData=(path, selMode))
     if abspath in selected:
         cont.backgroundColor = state.getColorPalette().getColor("accent")
     icon = None
@@ -208,7 +219,8 @@ def getFileEntry(path):
     else:
         return False
     text = pyos.GUI.Text((35, 7), path, state.getColorPalette().getColor("item"), 15,
-                         onClick=navigator.toSub, onClickData=(path,))
+                         onClick=navigator.toSub, onClickData=(path, selMode),
+                         onLongClick=pyos.GUI.OKDialog("Info", "Resource location: "+path).display)
     sizeText = "-"
     if pyos.os.path.isfile(abspath):
         try:
@@ -223,7 +235,7 @@ def getFileEntry(path):
     cont.addChild(size)
     return cont
 
-def load():
+def load(selMode=False):
     pathText.text = navigator.path
     pathText.refresh()
     try:
@@ -248,3 +260,34 @@ def onStart(s, a):
     application.ui.addChild(pathText)
     application.ui.addChild(container)
     load()
+    
+class LocationPicker(pyos.GUI.Overlay):
+    def __init__(self, onSelected, accept="files"):
+        global application, state, container, pathText, navigator
+        self.accept = accept
+        self.onSelected = onSelected
+        self.application = state.getActiveApplication()
+        application = self.application
+        super(LocationPicker, self).__init__((0, 0), width=self.application.width, height=self.application.height)
+        loadFileOpeners()
+        navigator = Navigator()
+        container = pyos.GUI.ListPagedContainer((0,50), width=application.ui.width, height=application.ui.height-50, padding=0, margin=0)
+        pathText = pyos.GUI.Text((0, 40), navigator.path, state.getColorPalette().getColor("item"), 10, width=application.ui.width)
+        bar = getSelectButtonBar()
+        self.baseContainer.addChild(bar)
+        self.baseContainer.addChild(pathText)
+        self.baseContainer.addChild(container)
+        load()
+        
+    def select(self, path):
+        if path == "current": path = navigator.path
+        if self.accept == "file" and pyos.os.path.isfile(path):
+            passSelectedDir(self.onSelected, self)
+            return
+        else:
+            pyos.GUI.OKDialog("Invalid File", "The application requested a file, but you selected a directory. Select a file instead.").display()
+            return
+        if self.accept == "folder" and pyos.os.path.isdir(path):
+            passSelectedDir(self.onSelected, self)
+        else:
+            pyos.GUI.OKDialog("Invalid Folder", "The application requested a directory, but you selected a file. Select a folder instead.").display()

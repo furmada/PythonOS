@@ -809,7 +809,7 @@ class GUI(object):
         
         def goToPage(self, number=0):
             self.currentPage = number
-            self.pageHolder.childComponents = []
+            self.pageHolder.clearChildren()
             self.pageHolder.addChild(self.getPage(self.currentPage))
             self.pageIndicatorText.setText(str(self.currentPage + 1)+" of "+str(len(self.pages)))
             self.pageIndicatorText.refresh()
@@ -903,11 +903,13 @@ class GUI(object):
         def addChild(self, component):
             componentHeight = self.getHeightOfComponents()
             if self.pages == [] or componentHeight + (component.height + 2*self.margin) + (2*self.padding) >= self.pageHolder.height:
+                print "!New Page"
                 self.addPage(self.generatePage(color=self.backgroundColor))
                 componentHeight = self.getHeightOfComponents()
             component.setPosition([self.padding, componentHeight])
             self.getLastPage().addChild(component)
             component.refresh()
+            print "Added component "+str(component)+" at position "+str(component.position)
             
     class ButtonRow(Container):
         def __init__(self, position, **data):
@@ -1017,14 +1019,18 @@ class GUI(object):
                 self.maxOffset = 0
                 for comp in self.container.childComponents:
                     if comp.position[1]+comp.height > self.maxOffset: self.maxOffset = comp.position[1]+comp.height
+                    
+        def clearChildren(self):
+            self.container.clearChildren()
             
     class FunctionBar(object):
         def __init__(self):
             self.container = GUI.Container((0, state.getGUI().height-40), background=state.getColorPalette().getColor("background"), width=state.getGUI().width, height=40)
             self.launcherApp = state.getApplicationList().getApp("launcher")
-            self.menu_button = GUI.Image((0, 0), surface=state.getIcons().getLoadedIcon("menu"), onClick=self.activateLauncher, onLongClick=Application.fullCloseCurrent, onLongClickData=(True,))
+            self.notificationMenu = GUI.NotificationMenu()
+            self.menu_button = GUI.Image((0, 0), surface=state.getIcons().getLoadedIcon("menu"), onClick=self.activateLauncher, onLongClick=Application.fullCloseCurrent)
             self.app_title_text = GUI.Text((42, 8), "Python OS 6", state.getColorPalette().getColor("item"), 20, onClick=Application.chainRefreshCurrent)
-            self.clock_text = GUI.Text((state.getGUI().width-45, 8), self.formatTime(), state.getColorPalette().getColor("accent"), 20) #Add Onclick Menu
+            self.clock_text = GUI.Text((state.getGUI().width-45, 8), self.formatTime(), state.getColorPalette().getColor("accent"), 20, onClick=self.toggleNotificationMenu()) #Add Onclick Menu
             self.container.addChild(self.menu_button)
             self.container.addChild(self.app_title_text)
             self.container.addChild(self.clock_text)
@@ -1044,6 +1050,14 @@ class GUI(object):
                 self.launcherApp.activate()
             else:
                 Application.fullCloseCurrent()
+                
+        def toggleNotificationMenu(self):
+            if self.notificationMenu.displayed: 
+                self.notificationMenu.hide()
+                return
+            else: 
+                print "Displaying"
+                self.notificationMenu.display()
             
     class Keyboard(object):
         def __init__(self, textEntryField=None, onEnter="return"):
@@ -1231,6 +1245,7 @@ class GUI(object):
             self.textComponent.height -= 20
             self.textComponent.refresh()
             self.textEntryField = GUI.TextEntryField((0, 90), width=self.container.width, height=20)
+            self.container.addChild(self.textEntryField)
             
         def returnRecordedResponse(self):
             super(GUI.AskDialog, self).recordResponse(self.textEntryField.getText())
@@ -1253,6 +1268,7 @@ class GUI(object):
     class Overlay(object): #Is dialog-like
         def __init__(self, position, **data):
             self.position = list(position)
+            self.displayed = False
             self.width = data.get("width", state.getGUI().width)
             self.height = data.get("height", state.getGUI().height-40)
             self.color = data.get("color", state.getColorPalette().getColor("background"))
@@ -1261,13 +1277,29 @@ class GUI(object):
             
         def display(self):
             self.application.ui.setDialog(self)
+            self.displayed = True
         
         def hide(self):
             self.application.ui.clearDialog()
             self.application.ui.refresh()
+            self.displayed = False
             
         def addChild(self, child):
             self.baseContainer.addChild(child)
+            
+    class NotificationMenu(Overlay):        
+        def __init__(self):
+            super(GUI.NotificationMenu, self).__init__((40, 20), width=200, height=260, color=(0, 0, 0, 0.6))
+            self.text = GUI.Text((1, 1), "Notifications", state.getColorPalette().getColor("item"), 18)
+            self.nContainer = GUI.ScrollableContainer((0, 20), width=200, height=240, transparent=True, margin=5)
+            self.addChild(self.text)
+            self.addChild(self.nContainer)
+            self.refresh()
+            
+        def refresh(self):
+            self.nContainer.clearChildren()
+            for notification in state.getNotificationQueue().notifications:
+                self.nContainer.addChild(notification.getContainer())
             
     class Selector(Container):      
         def __init__(self, position, items, **data):
@@ -1445,7 +1477,7 @@ class Application(object):
         if pause: self.thread.setPause(True)                    
         else: 
             self.thread.setStop()
-        state.getApplicationList().closeApp()
+            state.getApplicationList().closeApp()
         state.getColorPalette().setScheme()
         if replaceWithMostRecent:
             Application.setActiveApp(state.getApplicationList().getMostRecentActive(), True)
@@ -1482,7 +1514,7 @@ class ApplicationList(object):
             return self.activeApplications.pop(0)
     
     def switchLast(self, app):
-        self.activeApplications.insert(0, self.activeApplications.pop(self.activeApplications.index(app)))
+        self.activeApplications = [self.activeApplications.pop(self.activeApplications.index(app))] + self.activeApplications
         
     def getMostRecentActive(self):
         if len(self.activeApplications) > 0:
@@ -1491,14 +1523,65 @@ class ApplicationList(object):
     def getPreviousActive(self):
         if len(self.activeApplications) > 1:
             return self.activeApplications[1]
+        
+class Notification(object):
+    def __init__(self, title, text, **data):
+        self.title = title
+        self.text = text
+        self.active = True
+        self.source = data.get("source", None)
+        self.image = data.get("image", None)
+        self.onSelected = data.get("onSelected", Application.dummy)
+        self.onSelectedData = data.get("onSelectedData", ())
+        
+    def onSelected(self):
+        self.onSelected(*self.onSelectedData)
+        self.clear()
+        
+    def clear(self):
+        self.active = False
+        state.getNotificationQueue().sweep()
+        
+    def getContainer(self, c_width=200, c_height=40):
+        cont = GUI.Container((0, 0), width=c_width, height=c_height, transparent=True, onClick=self.onSelected)
+        if self.image != None:
+            try:
+                self.image.setPosition([0, 0])
+                cont.addChild(self.image)
+            except:
+                self.image = GUI.Image((0, 0), path=self.image, onClick=self.onSelected)
+        else:
+            self.image = GUI.Image((0, 0), surface=state.getIcons().getLoadedIcon("unknown"), onClick=self.onSelected)
+        rtitle = GUI.Text((41, 0), self.title, state.getColorPalette().getColor("item"), 20, onClick=self.onSelected)
+        rtxt = GUI.Text((41, 26), self.text, state.getColorPalette().getColor("item"), 14, onClick=self.onSelected)
+        cont.addChild(self.image)
+        cont.addChild(rtitle)
+        cont.addChild(rtxt)
+        return cont
+    
+class NotificationQueue(object):
+    def __init__(self):
+        self.notifications = []
+        
+    def sweep(self):
+        for notification in self.notifications:
+            if not notification.active:
+                self.notifications.remove(notification)
+                
+    def push(self, notification):
+        self.notifications.insert(0, notification)
+        
+    def clear(self):
+        self.notifications = []
                 
 class State(object):                  
-    def __init__(self, activeApp=None, colors=None, icons=None, controller=None, eventQueue=None, functionbar=None, font=None, gui=None, appList=None, keyboard=None):
+    def __init__(self, activeApp=None, colors=None, icons=None, controller=None, eventQueue=None, notificationQueue=None, functionbar=None, font=None, gui=None, appList=None, keyboard=None):
         self.activeApplication = activeApp
         self.colorPalette = colors
         self.icons = icons
         self.threadController = controller
         self.eventQueue = eventQueue
+        self.notificationQueue = notificationQueue
         self.functionBar = functionbar
         self.font = font
         self.appList = appList
@@ -1508,6 +1591,7 @@ class State(object):
         if icons == None: self.icons = GUI.Icons()
         if controller == None: self.threadController = Controller()
         if eventQueue == None: self.eventQueue = GUI.EventQueue()
+        if notificationQueue == None: self.notificationQueue = NotificationQueue()
         if font == None: self.font = GUI.Font()
         
     def getActiveApplication(self): return self.activeApplication
@@ -1515,6 +1599,7 @@ class State(object):
     def getIcons(self): return self.icons
     def getThreadController(self): return self.threadController
     def getEventQueue(self): return self.eventQueue
+    def getNotificationQueue(self): return self.notificationQueue
     def getFont(self): return self.font
     def getGUI(self): return self.gui
     def getApplicationList(self): 
@@ -1530,6 +1615,7 @@ class State(object):
     def setIcons(self, icons): self.icons = icons
     def setThreadController(self, controller): self.threadController = controller
     def setEventQueue(self, queue): self.eventQueue = queue
+    def setNotificationQueue(self, queue): self.notificationQueue = queue
     def setFunctionBar(self, bar): self.functionBar = bar
     def setFont(self, font): self.font = font
     def setGUI(self, gui): self.gui = gui

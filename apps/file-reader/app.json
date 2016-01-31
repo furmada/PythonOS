@@ -6,7 +6,7 @@
   "module": "file-reader",
   "main": "run",
   "more": {
-  	"icon": null,
+  	"icon": "file-reader.png",
     "onStart": "onStart",
     "colorScheme": "light",
     "file": {
