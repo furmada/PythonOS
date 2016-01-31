@@ -21,7 +21,7 @@ def buildAppEntry(a):
     if a.thread.pause:
         pauseBtn.textComponent.text = "Resume"
         pauseBtn.refresh()
-    if a.thread.stop:
+    if a.thread.stop or a.thread.firstRun:
         stopBtn.textComponent.text = "Start"
         pauseBtn.refresh()
         pauseBtn.textComponent.text = " - "
@@ -34,6 +34,7 @@ def buildAppEntry(a):
 
 def registerPauseClick(a, cont):
     pauseBtn = cont.getChildAt([138,0])
+    if a.thread.stop or a.thread.firstRun: return
     if a.thread.pause:
         a.activate()
         pauseBtn.textComponent.text = "Pause"
@@ -46,14 +47,14 @@ def registerPauseClick(a, cont):
 def registerStopClick(a, cont):
     pauseBtn = cont.getChildAt([138,0])
     stopBtn = cont.getChildAt([188,0])
-    if a.thread.stop:
+    if a.thread.stop or a.thread.firstRun:
         a.activate()
         stopBtn.textComponent.text = "Stop"
         stopBtn.refresh()
         pauseBtn.textComponent.text = "Pause"
         pauseBtn.refresh()
     else:
-        a.deactivate(False, False)
+        a.deactivate(False)
         stopBtn.textComponent.text = "Start"
         stopBtn.refresh()
         pauseBtn.textComponent.text = " - "

@@ -1030,7 +1030,7 @@ class GUI(object):
             self.notificationMenu = GUI.NotificationMenu()
             self.menu_button = GUI.Image((0, 0), surface=state.getIcons().getLoadedIcon("menu"), onClick=self.activateLauncher, onLongClick=Application.fullCloseCurrent)
             self.app_title_text = GUI.Text((42, 8), "Python OS 6", state.getColorPalette().getColor("item"), 20, onClick=Application.chainRefreshCurrent)
-            self.clock_text = GUI.Text((state.getGUI().width-45, 8), self.formatTime(), state.getColorPalette().getColor("accent"), 20, onClick=self.toggleNotificationMenu()) #Add Onclick Menu
+            self.clock_text = GUI.Text((state.getGUI().width-45, 8), self.formatTime(), state.getColorPalette().getColor("accent"), 20, onClick=self.toggleNotificationMenu) #Add Onclick Menu
             self.container.addChild(self.menu_button)
             self.container.addChild(self.app_title_text)
             self.container.addChild(self.clock_text)
@@ -1053,6 +1053,7 @@ class GUI(object):
                 
         def toggleNotificationMenu(self):
             if self.notificationMenu.displayed: 
+                print "Hiding"
                 self.notificationMenu.hide()
                 return
             else: 
@@ -1128,6 +1129,11 @@ class GUI(object):
         def setOnEnter(self, value="return"):
             self.onEnter = value
             
+        def deactivate(self):
+            self.active = False
+            self.textEntryField.setPosition(self.originalTextEntryFieldPosition)
+            self.textEntryField = None
+            
         def setTextEntryField(self, field):
             self.textEntryField = field
             self.active = True
@@ -1149,9 +1155,7 @@ class GUI(object):
                 if self.onEnter == "newline":
                     pass #Only if is MultiLineTextEntryField
                 else:
-                    self.active = False
-                    self.textEntryField.setPosition(self.originalTextEntryFieldPosition)
-                    self.textEntryField = None
+                    self.deactivate()
                 return
             if char == self.bkspc_sym:
                 self.textEntryField.backspace()
@@ -1360,9 +1364,7 @@ class Application(object):
             state.getActiveApplication().chainRefresh()
     
     @staticmethod
-    def setActiveApp(app="prev", fromDeactivate=False):
-        if state.getActiveApplication() != None and not fromDeactivate:
-            state.getActiveApplication().deactivate()
+    def setActiveApp(app="prev"):
         if app == "prev":
             app = state.getApplicationList().getMostRecentActive()
         state.setActiveApplication(app)
@@ -1371,12 +1373,14 @@ class Application(object):
         state.getApplicationList().pushActiveApp(app)
         
     @staticmethod
-    def fullCloseApp(app, replace=True):
-        app.deactivate(False, replace)
+    def fullCloseApp(app):
+        app.deactivate(False)
+        state.getApplicationList().getMostRecentActive().activate()
         
     @staticmethod
-    def fullCloseCurrent(replace=True):
-        Application.fullCloseApp(state.getActiveApplication(), replace)
+    def fullCloseCurrent():
+        if state.getActiveApplication().name != "home":
+            Application.fullCloseApp(state.getActiveApplication())
     
     @staticmethod
     def removeListing(location):
@@ -1453,6 +1457,8 @@ class Application(object):
         
     def activate(self):
         if state.getActiveApplication() == self: return
+        if state.getApplicationList().getMostRecentActive() != None:
+            state.getApplicationList().getMostRecentActive().deactivate()
         if self.thread in state.getThreadController().threads:
             self.thread.setPause(False)
         else:
@@ -1470,17 +1476,16 @@ class Application(object):
         else:
             return state.getIcons().getLoadedIcon("unknown")
         
-    def deactivate(self, pause=True, replaceWithMostRecent=False):
+    def deactivate(self, pause=True):
         if "persist" in self.parameters:
             if self.parameters["persist"] == False:
                 pause = False
-        if pause: self.thread.setPause(True)                    
-        else: 
+        if pause:
+            self.thread.setPause(True)
+        else:
             self.thread.setStop()
-            state.getApplicationList().closeApp()
+            state.getApplicationList().closeApp(self)
         state.getColorPalette().setScheme()
-        if replaceWithMostRecent:
-            Application.setActiveApp(state.getApplicationList().getMostRecentActive(), True)
         
     def uninstall(self):
         rmtree(self.location, True)
@@ -1509,11 +1514,14 @@ class ApplicationList(object):
         else:
             self.switchLast(app)
         
-    def closeApp(self):
-        if len(self.activeApplications) > 1:
-            return self.activeApplications.pop(0)
+    def closeApp(self, app=None):
+        if app == None:
+            if len(self.activeApplications) > 1:
+                return self.activeApplications.pop(0)
+        self.activeApplications.remove(app)
     
     def switchLast(self, app):
+        if app == None: return
         self.activeApplications = [self.activeApplications.pop(self.activeApplications.index(app))] + self.activeApplications
         
     def getMostRecentActive(self):
@@ -1653,6 +1661,8 @@ class State(object):
             if latestEvent != None:
                 clickedChild = None
                 if state.getKeyboard() != None and state.getKeyboard().active:
+                    if latestEvent.pos[1] < state.getKeyboard().baseContainer.position[1]:
+                        state.getKeyboard().deactivate()
                     clickedChild = state.getKeyboard().baseContainer.getClickedChild(latestEvent)
                     if clickedChild == None:
                         clickedChild = state.getActiveApplication().ui.getClickedChild(latestEvent)
