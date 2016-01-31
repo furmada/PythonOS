@@ -610,12 +610,11 @@ class GUI(object):
         def refresh(self):
             self.surface = self.getRenderedText()
             
-    class Image(Container):        
+    class Image(Component):        
         def __init__(self, position, **data):
             self.path = ""
             self.originalSurface = None
             self.transparent = True
-            self.SKIP_CHILD_CHECK = True
             if "path" in data:
                 self.path = data["path"]
             else:
@@ -623,14 +622,14 @@ class GUI(object):
             if "surface" not in data:
                 data["surface"] = pygame.image.load(data["path"])
             self.originalSurface = data["surface"]
-            super(GUI.Container, self).__init__(position, **data)      
+            super(GUI.Image, self).__init__(position, **data)      
             
         def refresh(self):
-            super(GUI.Container, self).refresh()
+            super(GUI.Image, self).refresh()
             self.surface = pygame.transform.scale(self.originalSurface, (self.width, self.height))
             
         def render(self, largerSurface):
-            super(GUI.Container, self).render(largerSurface)
+            super(GUI.Image, self).render(largerSurface)
             
     class Button(Container):
         def __init__(self, position, text, bgColor=(20,20,20), textColor=(200,200,200), textSize=14, **data):
@@ -903,13 +902,11 @@ class GUI(object):
         def addChild(self, component):
             componentHeight = self.getHeightOfComponents()
             if self.pages == [] or componentHeight + (component.height + 2*self.margin) + (2*self.padding) >= self.pageHolder.height:
-                print "!New Page"
                 self.addPage(self.generatePage(color=self.backgroundColor))
                 componentHeight = self.getHeightOfComponents()
             component.setPosition([self.padding, componentHeight])
             self.getLastPage().addChild(component)
             component.refresh()
-            print "Added component "+str(component)+" at position "+str(component.position)
             
     class ButtonRow(Container):
         def __init__(self, position, **data):
@@ -947,10 +944,10 @@ class GUI(object):
             self.container = GUI.Container((0, 0), transparent=True, width=self.width-20, height=self.height)
             self.scrollBar = GUI.Container((self.width-20, 0), width=20, height=self.height)
             self.scrollUpBtn = GUI.Image((0, 0), path="res/scrollup.png", width=20, height=40,
-                                         onClick=self.scroll, onClickData=(self.scrollAmount))
-            self.scrollDownBtn = GUI.Image((0, 0), path="res/scrolldown.png", width=20, height=40,
-                                         onClick=self.scroll, onClickData=(-self.scrollAmount))
-            self.scrollIndicator = GUI.Canvas((0, 40), width=20, height=self.height-80)
+                                         onClick=self.scroll, onClickData=(self.scrollAmount,))
+            self.scrollDownBtn = GUI.Image((0, self.scrollBar.height-40), path="res/scrolldown.png", width=20, height=40,
+                                         onClick=self.scroll, onClickData=(-self.scrollAmount,))
+            self.scrollIndicator = GUI.Canvas((0, 40), width=20, height=self.scrollBar.height-80)
             self.scrollIndicator.getSurface().fill(state.getColorPalette().getColor("item"))
             self.scrollBar.addChild(self.scrollUpBtn)
             self.scrollBar.addChild(self.scrollIndicator)
@@ -962,8 +959,8 @@ class GUI(object):
             self.maxOffset = 0
             
         def scroll(self, amount):
-            if amount < 0 and self.offset + amount < self.minOffset: return
-            if amount > 0 and self.offset + amount > self.maxOffset: return
+            #if amount < 0 and self.offset + amount < self.minOffset: return
+            #if amount > 0 and self.offset + amount > self.maxOffset: return
             for child in self.container.childComponents:
                 child.setPosition([child.position[0], child.position[1]+amount])
             self.offset += amount
@@ -975,7 +972,7 @@ class GUI(object):
         def getVisibleChildren(self):
             visible = []
             for child in self.container.childComponents:
-                if child.position[1] >= 0 and child.position[1] <= self.height:
+                if child.position[1]+child.height >= 0 and child.position[1]-child.height <= self.height:
                     visible.append(child)
             return visible
         
@@ -986,7 +983,7 @@ class GUI(object):
             currChild = len(visible)
             while currChild > 0:
                 currChild -= 1
-                child = self.visible[currChild]
+                child = self.getVisibleChildren()[currChild]
                 if "SKIP_CHILD_CHECK" in child.__dict__:
                     if child.SKIP_CHILD_CHECK:
                         if child.checkClick(mouseEvent, offsetX + self.position[0], offsetY + self.position[1]):
@@ -1006,7 +1003,7 @@ class GUI(object):
         
         def addChild(self, component):
             if component.position[1] < self.minOffset: self.minOffset = component.position[1]
-            if component.position[1]+component.height > self.maxOffset: self.maxOffset = component.position[1]+component.height
+            if component.position[1]+component.height > self.maxOffset: self.maxOffset = -(component.position[1]+component.height)
             self.container.addChild(component)
             
         def removeChild(self, component):
@@ -1023,6 +1020,33 @@ class GUI(object):
         def clearChildren(self):
             self.container.clearChildren()
             
+        def render(self, largerSurface):
+            super(GUI.ScrollableContainer, self).render(largerSurface)
+            
+    class ListScrollableContainer(ScrollableContainer):
+        def __init__(self, position, **data):
+            self.margin = data.get("margin", 0)
+            super(GUI.ListScrollableContainer, self).__init__(position, **data)
+            
+        def getCumulativeHeight(self):
+            if self.container.childComponents == []:
+                return 0
+            return self.container.childComponents[len(self.container.childComponents)-1].position[1]+self.container.childComponents[len(self.container.childComponents)-1].height+self.margin
+            
+        def addChild(self, component):
+            component.position[1] = self.getCumulativeHeight()
+            super(GUI.ListScrollableContainer, self).addChild(component)
+            
+        def removeChild(self, component):
+            super(GUI.ListScrollableContainer, self).removeChild(component)
+            childrenCopy = self.container.childComponents[:]
+            self.childComponents = []
+            for child in childrenCopy:
+                self.addChild(child)
+                
+        def clearChildren(self):
+            self.container.childComponents = []
+                    
     class FunctionBar(object):
         def __init__(self):
             self.container = GUI.Container((0, state.getGUI().height-40), background=state.getColorPalette().getColor("background"), width=state.getGUI().width, height=40)
@@ -1181,7 +1205,7 @@ class GUI(object):
             self.title = title
             self.text = text
             self.response = None
-            self.baseContainer = GUI.Container((0, 0), width=state.getGUI().width, height=state.getActiveApplication().ui.height, color=(0, 0, 0, 0.5))
+            self.baseContainer = GUI.Container((0, 0), width=state.getGUI().width, height=state.getActiveApplication().ui.height, color=(0, 0, 0, 0))
             self.container = GUI.Container((0, 50), width=state.getGUI().width, height=140, color=state.getColorPalette().getColor("background"), border=2, borderColor=state.getColorPalette().getColor("accent"))
             self.buttonList = actionButtons
             self.textComponent = GUI.MultiLineText((2, 2), self.text, state.getColorPalette().getColor("item"), 16, width=self.container.width-4, height=108)
@@ -1276,10 +1300,13 @@ class GUI(object):
             self.width = data.get("width", state.getGUI().width)
             self.height = data.get("height", state.getGUI().height-40)
             self.color = data.get("color", state.getColorPalette().getColor("background"))
-            self.baseContainer = data.get("container", GUI.Container((0, 0), width=self.width, height=self.height, color=self.color))
+            self.baseContainer = GUI.Container((0, 0), width=state.getGUI().width, height=state.getActiveApplication().ui.height, color=(0, 0, 0, 0), onClick=self.hide)
+            self.container = data.get("container", GUI.Container(self.position, width=self.width, height=self.height, color=self.color))
+            self.baseContainer.addChild(self.container)
             self.application = state.getActiveApplication()
             
         def display(self):
+            self.application = state.getActiveApplication()
             self.application.ui.setDialog(self)
             self.displayed = True
         
@@ -1289,14 +1316,16 @@ class GUI(object):
             self.displayed = False
             
         def addChild(self, child):
-            self.baseContainer.addChild(child)
+            self.container.addChild(child)
             
     class NotificationMenu(Overlay):        
         def __init__(self):
-            super(GUI.NotificationMenu, self).__init__((40, 20), width=200, height=260, color=(0, 0, 0, 0.6))
-            self.text = GUI.Text((1, 1), "Notifications", state.getColorPalette().getColor("item"), 18)
-            self.nContainer = GUI.ScrollableContainer((0, 20), width=200, height=240, transparent=True, margin=5)
+            super(GUI.NotificationMenu, self).__init__((40, 20), width=200, height=260, color=(20, 20, 20, 20))
+            self.text = GUI.Text((1, 1), "Notifications", (200, 200, 200), 18)
+            self.clearAllBtn = GUI.Button((self.width-41, 1), "Clear", (200, 200, 200), (20, 20, 20), width=40, height=18, onClick=self.clearAll)
+            self.nContainer = GUI.ListScrollableContainer((0, 20), width=200, height=240, transparent=True, margin=5)
             self.addChild(self.text)
+            self.addChild(self.clearAllBtn)
             self.addChild(self.nContainer)
             self.refresh()
             
@@ -1304,6 +1333,14 @@ class GUI(object):
             self.nContainer.clearChildren()
             for notification in state.getNotificationQueue().notifications:
                 self.nContainer.addChild(notification.getContainer())
+                
+        def display(self):
+            self.refresh()
+            super(GUI.NotificationMenu, self).display()
+            
+        def clearAll(self):
+            state.getNotificationQueue().clear()
+            self.refresh()
             
     class Selector(Container):      
         def __init__(self, position, items, **data):
@@ -1440,13 +1477,18 @@ class Application(object):
         self.loadColorScheme()
         self.thread = Thread(self.mainMethod, **self.evtHandlers)
         
+    def getModule(self):
+        return self.module
+        
     def chainRefresh(self):
         self.ui.refresh()
         
     def onStart(self):
         self.ui = GUI.AppContainer(self)
         self.loadColorScheme()
-        if "onStartReal" in self.evtHandlers: getattr(self.module, self.evtHandlers["onStartReal"])(state, self)
+        if "onStartReal" in self.evtHandlers and not self.evtHandlers.get("onStartBlock", False): getattr(self.module, self.evtHandlers["onStartReal"])(state, self)
+        if self.evtHandlers.get("onStartBlock", False):
+            self.evtHandlers["onStartBlock"] = False
                         
     def loadColorScheme(self):
         if "colorScheme" in self.parameters: 
@@ -1455,7 +1497,9 @@ class Application(object):
         self.ui.backgroundColor = state.getColorPalette().getColor("background")
         self.ui.refresh()
         
-    def activate(self):
+    def activate(self, **data):
+        if data.get("noOnStart", False):
+            self.evtHandlers["onStartBlock"] = True
         if state.getActiveApplication() == self: return
         if state.getApplicationList().getMostRecentActive() != None:
             state.getApplicationList().getMostRecentActive().deactivate()
@@ -1549,9 +1593,10 @@ class Notification(object):
     def clear(self):
         self.active = False
         state.getNotificationQueue().sweep()
+        state.getFunctionBar().notificationMenu.refresh()
         
     def getContainer(self, c_width=200, c_height=40):
-        cont = GUI.Container((0, 0), width=c_width, height=c_height, transparent=True, onClick=self.onSelected)
+        cont = GUI.Container((0, 0), width=c_width, height=c_height, transparent=True, onClick=self.onSelected, onLongClick=self.clear)
         if self.image != None:
             try:
                 self.image.setPosition([0, 0])
@@ -1559,9 +1604,9 @@ class Notification(object):
             except:
                 self.image = GUI.Image((0, 0), path=self.image, onClick=self.onSelected)
         else:
-            self.image = GUI.Image((0, 0), surface=state.getIcons().getLoadedIcon("unknown"), onClick=self.onSelected)
-        rtitle = GUI.Text((41, 0), self.title, state.getColorPalette().getColor("item"), 20, onClick=self.onSelected)
-        rtxt = GUI.Text((41, 26), self.text, state.getColorPalette().getColor("item"), 14, onClick=self.onSelected)
+            self.image = GUI.Image((0, 0), surface=state.getIcons().getLoadedIcon("unknown"), onClick=self.onSelected, onLongClick=self.clear)
+        rtitle = GUI.Text((41, 0), self.title, (200, 200, 200), 20, onClick=self.onSelected, onLongClick=self.clear)
+        rtxt = GUI.Text((41, 24), self.text, (200, 200, 200), 14, onClick=self.onSelected, onLongClick=self.clear)
         cont.addChild(self.image)
         cont.addChild(rtitle)
         cont.addChild(rtxt)
@@ -1673,7 +1718,7 @@ class State(object):
                         if state.getActiveApplication() != None:
                             clickedChild = state.getActiveApplication().ui.getClickedChild(latestEvent)
                     else:
-                        clickedChild = state.getFunctionBar().container.getClickedChild(latestEvent)
+                        clickedChild = state.getFunctionBar().container.getClickedChild(latestEvent, 0, state.getGUI().height-40)
                 if clickedChild != None:
                     if isinstance(latestEvent, GUI.LongClickEvent):
                         clickedChild.onLongClick()

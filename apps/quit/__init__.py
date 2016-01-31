@@ -14,4 +14,5 @@ def onLoad(s, a):
 def parseResponse(resp):
     if resp == "Yes":
         state.exit()
-    app.deactivate(False, True)
+    pyos.Application.fullCloseCurrent()
+    

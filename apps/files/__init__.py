@@ -43,8 +43,8 @@ def appSelDialog(path, short):
     if len(apps) == 1:
         if apps[0][2]:
             apps[0][3].onStart()
-        apps[0][3].activate()
-        apps[0][1](path)
+        apps[0][3].activate(noOnStart=True)
+        apps[0][1](state, apps[0][3], path)
         return
     selector = pyos.GUI.Selector((0, 0), [app[0] for app in apps], width=state.getGUI().width, height=40,
                                  onValueChanged=startAppForPath, onValueChangedData=(apps,path))
@@ -59,8 +59,8 @@ def startAppForPath(entries, path, title):
     if entry == None: return
     if entry[2]:
         entry[3].onStart()
-    entry[3].activate()
-    entry[1](path)
+    entry[3].activate(noOnStart=True)
+    entry[1](state, entry[3], path)
 
 def goToPath():
     dialog = pyos.GUI.AskDialog("Location", "Enter the path of the location you want to navigate to.", navigator.toAbs)
@@ -246,11 +246,9 @@ def load(selMode=False):
         if entry:
             container.addChild(entry)
     container.goToPage()
-
-def onStart(s, a):
-    global application, state, container, pathText, navigator
-    application = a
-    state = s
+    
+def loadUI():
+    global container, pathText, navigator
     loadFileOpeners()
     navigator = Navigator()
     container = pyos.GUI.ListPagedContainer((0,50), width=application.ui.width, height=application.ui.height-50, padding=0, margin=0)
@@ -260,15 +258,22 @@ def onStart(s, a):
     application.ui.addChild(pathText)
     application.ui.addChild(container)
     load()
+
+def onStart(s, a):
+    global application, state
+    application = a
+    state = s
+    loadUI()
     
 class LocationPicker(pyos.GUI.Overlay):
     def __init__(self, onSelected, accept="files"):
-        global application, state, container, pathText, navigator
+        global application, state, container, pathText, navigator, picker
+        picker = self
         self.accept = accept
         self.onSelected = onSelected
         self.application = state.getActiveApplication()
         application = self.application
-        super(LocationPicker, self).__init__((0, 0), width=self.application.width, height=self.application.height)
+        super(LocationPicker, self).__init__((0, 0), width=self.application.ui.width, height=self.application.ui.height)
         loadFileOpeners()
         navigator = Navigator()
         container = pyos.GUI.ListPagedContainer((0,50), width=application.ui.width, height=application.ui.height-50, padding=0, margin=0)
@@ -279,15 +284,22 @@ class LocationPicker(pyos.GUI.Overlay):
         self.baseContainer.addChild(container)
         load()
         
+    def hide(self):
+        global picker
+        picker = None
+        super(LocationPicker, self).hide()
+        
     def select(self, path):
         if path == "current": path = navigator.path
         if self.accept == "file" and pyos.os.path.isfile(path):
+            self.hide()
             passSelectedDir(self.onSelected, self)
             return
         else:
             pyos.GUI.OKDialog("Invalid File", "The application requested a file, but you selected a directory. Select a file instead.").display()
             return
         if self.accept == "folder" and pyos.os.path.isdir(path):
+            self.hide()
             passSelectedDir(self.onSelected, self)
         else:
             pyos.GUI.OKDialog("Invalid Folder", "The application requested a directory, but you selected a file. Select a folder instead.").display()

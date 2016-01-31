@@ -8,6 +8,7 @@
   "more": {
     "icon": "files.png",
     "onStart": "onStart",
+    "onResume": "loadUI",
     "colorScheme": "normal"
   }
 }
