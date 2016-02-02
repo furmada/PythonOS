@@ -5,8 +5,8 @@ app = None
 
 def lines(data):
     count = 1
-    for c in data:
-        if c == '\n' or c == '\r\n':
+    for c in data.replace("\r\n", '\n'):
+        if c == '\n':
             count += 1
     return count
 

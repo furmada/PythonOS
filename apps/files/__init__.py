@@ -201,38 +201,44 @@ def toggleSelect(cont, path):
         deselect(cont, path)
     else:
         select(cont, path)
+        
+def fileInfoDialog(path, short):
+    isFile = pyos.os.path.isfile(path)
+    infostr = "Resource information for "+short+"\n\n"
+    if isFile:
+        infostr += "Size: "+str(pyos.os.path.getsize(path) / 1000)+"kb\n"
+    else:
+        infostr += "Directory Children: "+str(len(pyos.os.listdir(path)))+"\n"
+    pyos.GUI.OKDialog(short, infostr).display()
 
-def getFileEntry(path, selMode=False):
-    if path.startswith("."): return False
-    abspath = navigator.subToAbs(path)
-    cont = pyos.GUI.Container((-1000,-20), width=application.ui.width, height=30, color=state.getColorPalette().getColor("background"), fullPath=abspath,
-                              onClick=navigator.toSub, onClickData=(path, selMode))
+def getFileEntry(fpath, selMode=False):
+    if fpath.startswith("."): return False
+    abspath = navigator.subToAbs(fpath)
+    cont = pyos.GUI.Container((0, 0), width=container.container.width, height=30, color=state.getColorPalette().getColor("background"),
+                              onClick=navigator.toSub, onClickData=(fpath, selMode))
+    isFile = pyos.os.path.isfile(abspath)
+    icon = None
+    if isFile:
+        icon = pyos.GUI.Image((0, 0), path="res/icons/file.png", width=30, height=30,
+                              onClick=toggleSelect, onClickData=(cont, fpath))
+    else:
+        icon = pyos.GUI.Image((0, 0), path="res/icons/folder.png", width=30, height=30,
+                              onClick=toggleSelect, onClickData=(cont, fpath))
+    filename = pyos.GUI.Text((32, 7), fpath, state.getColorPalette().getColor("item"), 15,
+                             onClick=navigator.toSub, onClickData=(fpath, selMode))
+    size = None
+    if isFile:
+        size = pyos.GUI.Text((cont.width-35, 7), str(pyos.os.path.getsize(fpath) / 1000)+"kb", state.getColorPalette().getColor("item"), 15,
+                             onClick=fileInfoDialog, onClickData=(abspath, fpath))
+    else:
+        size = pyos.GUI.Text((cont.width-35, 7), "dir", state.getColorPalette().getColor("item"), 15,
+                             onClick=fileInfoDialog, onClickData=(abspath, fpath))
+    cont.addChild(icon)
+    cont.addChild(filename)
+    cont.addChild(size)
     if abspath in selected:
         cont.backgroundColor = state.getColorPalette().getColor("accent")
-    icon = None
-    if pyos.os.path.isfile(abspath):
-        icon = pyos.GUI.Image((0,0), path="res/icons/file.png", width=30, height=30,
-                              onClick=toggleSelect, onClickData=(cont, path))
-    elif pyos.os.path.isdir(abspath):
-        icon = pyos.GUI.Image((0,0), path="res/icons/folder.png", width=30, height=30,
-                          onClick=toggleSelect, onClickData=(cont, path))
-    else:
-        return False
-    text = pyos.GUI.Text((35, 7), path, state.getColorPalette().getColor("item"), 15,
-                         onClick=navigator.toSub, onClickData=(path, selMode),
-                         onLongClick=pyos.GUI.OKDialog("Info", "Resource location: "+path).display)
-    sizeText = "-"
-    if pyos.os.path.isfile(abspath):
-        try:
-            sizeText = str(pyos.os.path.getsize(abspath) / 1000)+"kb"
-        except:
-            sizeText = "0kb"
-    elif pyos.os.path.isdir(abspath):
-        sizeText = "dir"
-    size = pyos.GUI.Text((application.ui.width-35, 7), sizeText, state.getColorPalette().getColor("item"), 15)
-    cont.addChild(icon)
-    cont.addChild(text)
-    cont.addChild(size)
+    cont.refresh()
     return cont
 
 def load(selMode=False):
@@ -241,17 +247,17 @@ def load(selMode=False):
     try:
         container.clearChildren()
     except: pass
-    for loc in pyos.os.listdir(navigator.path):
+    for loc in sorted([p for p in pyos.os.listdir(navigator.path) if pyos.os.path.isdir(p)]) + sorted([p for p in pyos.os.listdir(navigator.path) if pyos.os.path.isfile(p)]):
         entry = getFileEntry(loc)
         if entry:
             container.addChild(entry)
-    container.goToPage()
+    #container.goToPage()
     
 def loadUI():
     global container, pathText, navigator
     loadFileOpeners()
     navigator = Navigator()
-    container = pyos.GUI.ListPagedContainer((0,50), width=application.ui.width, height=application.ui.height-50, padding=0, margin=0)
+    container = pyos.GUI.ListScrollableContainer((0,50), width=application.ui.width, height=application.ui.height-50, padding=0, margin=0)
     pathText = pyos.GUI.Text((0, 40), navigator.path, state.getColorPalette().getColor("item"), 10, width=application.ui.width)
     bar = getDefaultButtonBar()
     application.ui.addChild(bar)
@@ -276,7 +282,7 @@ class LocationPicker(pyos.GUI.Overlay):
         super(LocationPicker, self).__init__((0, 0), width=self.application.ui.width, height=self.application.ui.height)
         loadFileOpeners()
         navigator = Navigator()
-        container = pyos.GUI.ListPagedContainer((0,50), width=application.ui.width, height=application.ui.height-50, padding=0, margin=0)
+        container = pyos.GUI.ListScrollableContainer((0,50), width=application.ui.width, height=application.ui.height-50, padding=0, margin=0)
         pathText = pyos.GUI.Text((0, 40), navigator.path, state.getColorPalette().getColor("item"), 10, width=application.ui.width)
         bar = getSelectButtonBar()
         self.baseContainer.addChild(bar)

@@ -939,7 +939,7 @@ class GUI(object):
                 
     class ScrollableContainer(Container):
         def __init__(self, position, **data): 
-            self.scrollAmount = data.get("scrollAmount", 5) 
+            self.scrollAmount = data.get("scrollAmount", 15) 
             super(GUI.ScrollableContainer, self).__init__(position, **data)
             self.container = GUI.Container((0, 0), transparent=True, width=self.width-20, height=self.height)
             self.scrollBar = GUI.Container((self.width-20, 0), width=20, height=self.height)
@@ -964,7 +964,7 @@ class GUI(object):
             for child in self.container.childComponents:
                 child.setPosition([child.position[0], child.position[1]+amount])
             self.offset += amount
-            self.scrollIndicator.getSurface().fill(state.getColorPalette().getColor("item"))
+            self.scrollIndicator.getSurface().fill((0, 0, 0))
             siHeight = (self.maxOffset-self.minOffset) / self.height
             pygame.draw.rect(self.scrollIndicator.getSurface(), state.getColorPalette().getColor("accent"),
                              [0, (self.height / 2)-(siHeight / 2), 20, siHeight])
@@ -977,13 +977,13 @@ class GUI(object):
             return visible
         
         def getClickedChild(self, mouseEvent, offsetX=0, offsetY=0):
-            clicked = self.scrollBar.getClickedChild(mouseEvent, offsetX, offsetY)
+            clicked = self.scrollBar.getClickedChild(mouseEvent, offsetX + self.position[0] + self.container.width, offsetY + self.position[1])
             if clicked != None: return clicked
             visible = self.getVisibleChildren()
             currChild = len(visible)
             while currChild > 0:
                 currChild -= 1
-                child = self.getVisibleChildren()[currChild]
+                child = visible[currChild]
                 if "SKIP_CHILD_CHECK" in child.__dict__:
                     if child.SKIP_CHILD_CHECK:
                         if child.checkClick(mouseEvent, offsetX + self.position[0], offsetY + self.position[1]):
@@ -1054,7 +1054,7 @@ class GUI(object):
             self.notificationMenu = GUI.NotificationMenu()
             self.menu_button = GUI.Image((0, 0), surface=state.getIcons().getLoadedIcon("menu"), onClick=self.activateLauncher, onLongClick=Application.fullCloseCurrent)
             self.app_title_text = GUI.Text((42, 8), "Python OS 6", state.getColorPalette().getColor("item"), 20, onClick=Application.chainRefreshCurrent)
-            self.clock_text = GUI.Text((state.getGUI().width-45, 8), self.formatTime(), state.getColorPalette().getColor("accent"), 20, onClick=self.toggleNotificationMenu) #Add Onclick Menu
+            self.clock_text = GUI.Text((state.getGUI().width-45, 8), self.formatTime(), state.getColorPalette().getColor("accent"), 20, onClick=self.toggleNotificationMenu, onLongClick=State.rescue) #Add Onclick Menu
             self.container.addChild(self.menu_button)
             self.container.addChild(self.app_title_text)
             self.container.addChild(self.clock_text)
@@ -1301,7 +1301,7 @@ class GUI(object):
             self.height = data.get("height", state.getGUI().height-40)
             self.color = data.get("color", state.getColorPalette().getColor("background"))
             self.baseContainer = GUI.Container((0, 0), width=state.getGUI().width, height=state.getActiveApplication().ui.height, color=(0, 0, 0, 0), onClick=self.hide)
-            self.container = data.get("container", GUI.Container(self.position, width=self.width, height=self.height, color=self.color))
+            self.container = data.get("container", GUI.Container(self.position[:], width=self.width, height=self.height, color=self.color))
             self.baseContainer.addChild(self.container)
             self.application = state.getActiveApplication()
             
@@ -1685,6 +1685,60 @@ class State(object):
         pygame.quit()
         exit()
         
+    @staticmethod
+    def rescue():
+        global state
+        rFnt = pygame.font.Font(None, 16)
+        rClock = pygame.time.Clock()
+        print "Recovery menu entered."
+        while True:
+            rClock.tick(10)
+            screen.fill([0, 0, 0])
+            pygame.draw.rect(screen, [200, 200, 200], [0, 0, 280, 80])
+            screen.blit(rFnt.render("Return to Python OS", 1, [20, 20, 20]), [40, 35])
+            pygame.draw.rect(screen, [20, 200, 20], [0, 80, 280, 80])
+            screen.blit(rFnt.render("Stop all apps and return", 1, [20, 20, 20]), [40, 115])
+            pygame.draw.rect(screen, [20, 20, 200], [0, 160, 280, 80])
+            screen.blit(rFnt.render("Stop current app and return", 1, [20, 20, 20]), [40, 195])
+            pygame.draw.rect(screen, [200, 20, 20], [0, 240, 280, 80])
+            screen.blit(rFnt.render("Exit completely", 1, [20, 20, 20]), [40, 275])
+            pygame.display.flip()
+            for evt in pygame.event.get():
+                if evt.type == pygame.QUIT or evt.type == pygame.KEYDOWN and evt.key == pygame.K_ESCAPE:
+                    print "Quit signal detected."
+                    try: state.exit()
+                    except:
+                        pygame.quit()
+                        exit()
+                if evt.type == pygame.MOUSEBUTTONDOWN:
+                    if evt.pos[1] >= 80:
+                        if evt.pos[1] >= 160:
+                            if evt.pos[1] >= 240:
+                                print "Exiting."
+                                try: state.exit()
+                                except:
+                                    pygame.quit()
+                                    exit()
+                            else:
+                                print "Stopping current app"
+                                try:
+                                    Application.fullCloseCurrent()
+                                except:
+                                    print "Regular stop failed!"
+                                    Application.setActiveApp(state.getApplicationList().getApp("home"))
+                                return
+                        else:
+                            print "Closing all active applications"
+                            for a in state.getApplicationList().activeApplications:
+                                try: a.deactivate()
+                                except:
+                                    print "The app "+str(a.name)+" failed to deactivate!"
+                                    state.getApplicationList().activeApplications.remove(a)
+                            state.getApplicationList().getApp("home").activate()
+                            return
+                    else:
+                        print "Returning to Python OS."
+                        return
     @staticmethod
     def main():
         while True:
