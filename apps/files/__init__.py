@@ -63,6 +63,13 @@ class Operations:
                 except:
                     pyos.GUI.ErrorDialog("Failed to remove a folder.").display()
                     
+    @staticmethod
+    def newFolder(name):
+        try:
+            pyos.os.mkdir(name)
+        except:
+            pyos.GUI.ErrorDialog("Failed to make a new folder.").display()
+                    
 class ApplicationSupport(object):
     def __init__(self):
         self.applications = {}
@@ -101,6 +108,9 @@ class ApplicationSupport(object):
 
     def choiceDialog(self, path, short):
         suitable = self.getSuitableApps(path[path.rfind("."):])
+        if len(suitable) == 0:
+            pyos.GUI.OKDialog("Cannot Open", "The file "+short+" cannot be opened because no installed application supports the "+path[path.rfind("."):]+" format.").display()
+            return
         text = pyos.GUI.Text((2, 2), "Select an application to open "+str(short), state.getColorPalette().getColor("item"))
         self.selector = pyos.GUI.Selector((0, 20), [app.name for app in suitable], width=240, height=40,
                                      onValueChanged=self.setCurrentSelection,
@@ -179,7 +189,6 @@ class FileEntry(pyos.GUI.Container):
         else:
             self.backgroundColor = state.getColorPalette().getColor("background")
             self.onDeselect()
-    
 
 class FileExplorer(pyos.GUI.Container):    
     def __init__(self, position, **data):
@@ -187,7 +196,8 @@ class FileExplorer(pyos.GUI.Container):
         self.path = str(pyos.__file__).rstrip(".pyos.pyc").replace("\\", "/")
         self.selected = []
         self.fileList = pyos.GUI.ListScrollableContainer((0, 40), width=self.width, height=self.height-40, color=state.getColorPalette().getColor("background"),
-                                                         margin=0, padding=0, scrollAmount=40)
+                                                         margin=0, padding=0, scrollAmount=40,
+                                                         onLongClick=self.newFolderAsk)
         self.addChild(self.fileList)
         self.generateButtonBar()
         self.appSupport = ApplicationSupport()
@@ -299,6 +309,14 @@ class FileExplorer(pyos.GUI.Container):
         else:
             Operations.copy(self.toCopy, self.path)
             self.clearCopy()
+            
+    def newFolderAsk(self):
+        pyos.GUI.AskDialog("New Folder", "Enter the name of the new folder.", self.newFolder).display()
+        
+    def newFolder(self, path):
+        if path != "Cancel":
+            Operations.newFolder(pyos.os.path.join(self.path, path))
+            self.loadDir()
             
     def clearCopy(self):
         self.toCopy = None
