@@ -1,311 +1,330 @@
 import pyos
-from shutil import move, copy2, copytree
+from shutil import move, copy2, copytree, rmtree
 from sys import platform
 
 application = None
 state = None
 
-navigator = None 
-
-pathIndicator = None
-fileOpeners = {}
-selected = []
-
-pathText = None
-container = None
-
-picker = None
-    
-def loadFileOpeners():
-    global fileOpeners
-    fileOpeners = {}
-    for app in state.getApplicationList().applications.values():
-        if "file" in app.parameters:
-            print "registered file-opener app "+app.name
-            fileOpeners[app] = {
-                                  "method": getattr(app.module, app.parameters["file"]["method"]),
-                                  "supported": app.parameters["file"]["supported"],
-                                  "startFirst": app.parameters["file"].get("startFirst", app.thread.firstRun)
-                                  }
-            
-def getAppsForFileType(ftype):
-    apps = []
-    for app in fileOpeners.keys():
-        if ftype in fileOpeners[app]["supported"]:
-            apps.append([app.title, fileOpeners[app]["method"], fileOpeners[app]["startFirst"], app])
-    return apps
-
-def appSelDialog(path, short):
-    apps = getAppsForFileType(navigator.getExtension(short))
-    if len(apps) == 0:
-        pyos.GUI.OKDialog("Unsupported", "The file "+short+" cannot be opened because no installed app supports its format.").display()
-        return
-    if len(apps) == 1:
-        if apps[0][2]:
-            apps[0][3].onStart()
-        apps[0][3].activate(noOnStart=True)
-        apps[0][1](state, apps[0][3], path)
-        return
-    selector = pyos.GUI.Selector((0, 0), [app[0] for app in apps], width=state.getGUI().width, height=40,
-                                 onValueChanged=startAppForPath, onValueChangedData=(apps,path))
-    selector.overlay.display()
-    
-def startAppForPath(entries, path, title):
-    entry = None
-    for e in entries:
-        if e[0] == title:
-            entry = e
-            break
-    if entry == None: return
-    if entry[2]:
-        entry[3].onStart()
-    entry[3].activate(noOnStart=True)
-    entry[1](state, entry[3], path)
-
-def goToPath():
-    dialog = pyos.GUI.AskDialog("Location", "Enter the path of the location you want to navigate to.", navigator.toAbs)
-    dialog.display()
-    
-def passSelectedDir(to, overlay):
-    if len(selected) == 0:
-        to([navigator.path])
-        overlay.hide()
-        return
-    to(selected)
-    overlay.hide()
-    
 class Operations:
     @staticmethod
-    def delete():
-        global selected
-        for path in selected:
-            if pyos.os.path.isfile(path):
-                pyos.os.remove(path)
-            if pyos.os.path.isdir(path):
-                pyos.rmtree(path, True)
-            selected.remove(path)
-    
-    @staticmethod            
-    def move():
-        global selected
-        for path in selected:
-            if pyos.os.path.isfile(path):
-                move(path.rstrip("\\").rstrip("/"), navigator.path)
-            if pyos.os.path.isdir(path):
-                move(path, navigator.path)
-            selected.remove(path)
-            
+    def copy(srcList, dstDir):
+        if not pyos.os.path.isdir(dstDir):
+            pyos.GUI.ErrorDialog("The destination you have selected is not a directory").display()
+            return
+        count = 0
+        for src in srcList:
+            if src.isFile():
+                try:
+                    copy2(src.absolutePath, dstDir)
+                    count += 1
+                except:
+                    pyos.GUI.ErrorDialog("Failed to copy a file.").display()
+            if src.isDir():
+                try:
+                    copytree(src.absolutePath, dstDir)
+                    count += 1
+                except:
+                    pyos.GUI.ErrorDialog("Failed to copy a folder.").display()
+        state.getNotificationQueue().push(pyos.Notification("Copy Complete", "Finished copying "+str(count)+" items."))
+        
     @staticmethod
-    def copy():
-        global selected
-        for path in selected:
-            if pyos.os.path.isfile(path):
-                copy2(path.rstrip("\\").rstrip("/"), navigator.path)
-            if pyos.os.path.isdir(path):
-                copytree(path, navigator.path)
-            selected.remove(path)
-            
-class Navigator(object):
+    def move(srcList, dstDir):
+        if not pyos.os.path.isdir(dstDir):
+            pyos.GUI.ErrorDialog("The destination you have selected is not a directory").display()
+            return
+        count = 0
+        for src in srcList:
+            if src.isFile():
+                try:
+                    move(src.absolutePath, dstDir)
+                    count += 1
+                except:
+                    pyos.GUI.ErrorDialog("Failed to move a file.").display()
+            if src.isDir():
+                try:
+                    copytree(src.absolutePath, dstDir)
+                    rmtree(src.absolutePath)
+                    count += 1
+                except:
+                    pyos.GUI.ErrorDialog("Failed to move a folder.").display()
+        state.getNotificationQueue().push(pyos.Notification("Move Complete", "Finished moving "+str(count)+" items."))
+        
+    @staticmethod
+    def delete(items):
+        for item in items:
+            if item.isFile():
+                try:
+                    pyos.os.remove(item.absolutePath)
+                except:
+                    pyos.GUI.ErrorDialog("Failed to remove a file.").display()
+            if item.isDir():
+                try:
+                    rmtree(item.absolutePath)
+                except:
+                    pyos.GUI.ErrorDialog("Failed to remove a folder.").display()
+                    
+class ApplicationSupport(object):
     def __init__(self):
-        self.path = str(pyos.__file__).rstrip("pyos.py").rstrip("pyos.pyc")
-        if platform == "win32":
-            self.slash = "\\"
+        self.applications = {}
+        for app in state.getApplicationList().getApplicationList():
+            if "file" in app.parameters:
+                self.applications[app] = app.parameters["file"]
+        self.currentlySelected = None
+        self.selectionDialog = None
+    
+    def getSuitableApps(self, ftype):
+        suitable = []
+        for app, data in self.applications.iteritems():
+            if ftype in data:
+                suitable.append(app)
+        return suitable
+    
+    def launch(self, path):
+        self.cancelLaunch()
+        if self.currentlySelected == None:
+            self.setCurrentSelection(self.selector.getValue())
+        try:
+            self.currentlySelected.file = path
+            self.currentlySelected.activate()
+        except:
+            pyos.GUI.ErrorDialog("Unable to launch the requested application").display()
+            return
+        
+    def setCurrentSelection(self, name):
+        try:
+            self.currentlySelected = [app for app in self.applications.keys() if app.name == name][0]
+        except:
+            self.currentlySelected = None
+            
+    def cancelLaunch(self):
+        self.selectionDialog.hide()
+
+    def choiceDialog(self, path, short):
+        suitable = self.getSuitableApps(path[path.rfind("."):])
+        text = pyos.GUI.Text((2, 2), "Select an application to open "+str(short), state.getColorPalette().getColor("item"))
+        self.selector = pyos.GUI.Selector((0, 20), [app.name for app in suitable], width=240, height=40,
+                                     onValueChanged=self.setCurrentSelection,
+                                     border=1, borderColor=state.getColorPalette().getColor("item"))
+        cont = pyos.GUI.Container((0, application.ui.height-95), color=state.getColorPalette().getColor("background"), width=240, height=95,
+                                  border=1, borderColor=state.getColorPalette().getColor("item"))
+        cont.addChild(text)
+        cont.addChild(self.selector)
+        launchBtn = pyos.GUI.Button((0, 0), "Launch", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 16,
+                                    width=100, height=30, onClick=self.launch, onClickData=(path,))
+        cancelBtn = pyos.GUI.Button((0, 0), "Cancel", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 16,
+                                    width=100, height=30, onClick=self.cancelLaunch)
+        self.selectionDialog = pyos.GUI.CustomContentDialog("Open With", cont, [launchBtn, cancelBtn])
+        self.selectionDialog.display()
+        
+
+class FileEntry(pyos.GUI.Container):
+    @staticmethod
+    def getFileName(absolute):
+        return absolute[absolute.rfind("/")+1:]
+    
+    def __init__(self, position, filepath, **data):
+        data["onClickData"] = (self,)
+        super(FileEntry, self).__init__(position, **data)
+        self.absolutePath = filepath.replace("\\", "/")
+        self.shortPath = FileEntry.getFileName(self.absolutePath)
+        self.selected = False
+        if data.get("selected", False):
+            self.toggleSelection()
+        self.onSelected = data.get("onSelected", None)
+        self.onDeselected = data.get("onDeselected", None)
+        
+        self.icon = None
+        if self.isFile():
+            self.icon = pyos.GUI.Image((0, 0), surface=state.getIcons().getLoadedIcon("file"), width=40, height=40,
+                                       onClick=self.toggleSelection,
+                                       onLongClick=self.eventBindings.get("onClick", pyos.Application.dummy), onLongClickData=(self,))
+        if self.isDir():
+            self.icon = pyos.GUI.Image((0, 0), surface=state.getIcons().getLoadedIcon("folder"), width=40, height=40,
+                                       onClick=self.toggleSelection,
+                                       onLongClick=self.eventBindings.get("onClick", pyos.Application.dummy), onLongClickData=(self,))
+        self.sizeText = pyos.GUI.Text((self.width-40, 12), self.getSize(), state.getColorPalette().getColor("item"), 16,
+                                      onClick=self.eventBindings.get("onClick", pyos.Application.dummy), onClickData=(self,))
+        self.text = pyos.GUI.Text((41, 12), self.shortPath, state.getColorPalette().getColor("item"), 16,
+                                  onClick=self.eventBindings.get("onClick", pyos.Application.dummy), onClickData=(self,))
+        self.addChild(self.icon)
+        self.addChild(self.text)
+        self.addChild(self.sizeText)
+        
+    def onSelect(self):
+        if self.onSelected != None:
+            self.onSelected(self)
+    
+    def onDeselect(self):
+        if self.onDeselected != None:
+            self.onDeselected(self)
+        
+    def isFile(self):
+        return pyos.os.path.isfile(self.absolutePath)
+    
+    def isDir(self):
+        return pyos.os.path.isdir(self.absolutePath)
+    
+    def getSize(self):
+        if self.isFile():
+            return str(pyos.os.path.getsize(self.absolutePath) / 1000)+"kb"
+        if self.isDir():
+            return "dir"
+        return "-"
+    
+    def toggleSelection(self):
+        self.selected = not self.selected
+        if self.selected:
+            self.backgroundColor = state.getColorPalette().getColor("accent")
+            self.onSelect()
         else:
-            self.slash = "/"
+            self.backgroundColor = state.getColorPalette().getColor("background")
+            self.onDeselect()
+    
+
+class FileExplorer(pyos.GUI.Container):    
+    def __init__(self, position, **data):
+        super(FileExplorer, self).__init__(position, **data)
+        self.path = str(pyos.__file__).rstrip(".pyos.pyc").replace("\\", "/")
+        self.selected = []
+        self.fileList = pyos.GUI.ListScrollableContainer((0, 40), width=self.width, height=self.height-40, color=state.getColorPalette().getColor("background"),
+                                                         margin=0, padding=0, scrollAmount=40)
+        self.addChild(self.fileList)
+        self.generateButtonBar()
+        self.appSupport = ApplicationSupport()
+        self.toCopy = None
+        self.toMove = None
+        self.loadDir()
         
-    def up(self):
-        self.path = self.path.rstrip(self.slash)[:self.path.rstrip(self.slash).rfind(self.slash)+1]
-        load()
+    def generateButtonBar(self):
+        self.buttonBar = pyos.GUI.ButtonRow((0, 0), width=self.width, height=40, color=state.getColorPalette().getColor("background"),
+                                            border=1, borderColor=state.getColorPalette().getColor("item"),
+                                            padding=0, margin=0)
+        up = pyos.GUI.Image((0,0), surface=state.getIcons().getLoadedIcon("up"), width=40, height=40,
+                            onClick=self.navUp)
+        home = pyos.GUI.Image((0,0), surface=state.getIcons().getLoadedIcon("home_dir"), width=40, height=40,
+                            onClick=self.navHome)
+        goto = pyos.GUI.Image((0,0), surface=state.getIcons().getLoadedIcon("goto"), width=40, height=40,
+                            onClick=self.navAsk, onLongClick=self.displayLocationDialog)
+        self.copyBtn = pyos.GUI.Image((0,0), surface=state.getIcons().getLoadedIcon("copy"), width=40, height=40,
+                            onClick=self.copy, onLongClick=self.clearCopy)
+        self.moveBtn = pyos.GUI.Image((0,0), surface=state.getIcons().getLoadedIcon("move"), width=40, height=40,
+                            onClick=self.move, onLongClick=self.clearMove)
+        delete = pyos.GUI.Image((0,0), surface=state.getIcons().getLoadedIcon("delete"), width=40, height=40,
+                            onClick=self.deleteAsk)
+        self.buttonBar.addChild(up)
+        self.buttonBar.addChild(home)
+        self.buttonBar.addChild(goto)
+        self.buttonBar.addChild(self.copyBtn)
+        self.buttonBar.addChild(self.moveBtn)
+        self.buttonBar.addChild(delete)
+        self.addChild(self.buttonBar)
         
-    def home(self):
-        self.path = str(pyos.__file__).rstrip("pyos.py").rstrip("pyos.pyc")
-        load()
+    def scanDir(self):
+        entries = pyos.os.listdir(self.path)
+        entries = [e for e in entries if not e.startswith(".")]
+        files = sorted([e for e in entries if pyos.os.path.isfile(pyos.os.path.join(self.path, e))])
+        folders = sorted([e for e in entries if pyos.os.path.isdir(pyos.os.path.join(self.path, e))])
+        return folders + files
+    
+    def loadDir(self):
+        self.fileList.clearChildren()
+        for entry in self.scanDir():
+            entryContainer = FileEntry((0, -80), pyos.os.path.join(self.path, entry), width=self.fileList.container.width, height=40,
+                                             color=state.getColorPalette().getColor("background"), selected=(pyos.os.path.join(self.path, entry) in self.selected),
+                                             onSelected=self.selected.append, onDeselected=self.selected.remove,
+                                             onClick=self.navToSub
+                                       )
+            self.fileList.addChild(entryContainer)
+        if self.fileList.container.childComponents == []:
+            self.fileList.addChild(pyos.GUI.Text((2, 2), "This folder is empty.", state.getColorPalette().getColor("item")))
+            
+    def navUp(self):
+        self.path = self.path[:self.path.rfind("/")]
+        self.loadDir()
         
-    def toSub(self, sub, selMode=False):
-        combined = pyos.os.path.join(self.path, sub)
-        if pyos.os.path.isfile(combined):
-            if selMode:
-                picker.select(combined)
-                return
-            appSelDialog(combined, sub)
+    def navHome(self):
+        self.path = str(pyos.__file__).rstrip(".pyos.pyc").replace("\\", "/")
+        self.loadDir()
+        
+    def navToSub(self, subDir):
+        if subDir.isDir():
+            self.path = subDir.absolutePath
+            self.loadDir()
+        if subDir.isFile():
+            self.appSupport.choiceDialog(subDir.absolutePath, subDir.shortPath)
+            
+    def navToAbs(self, path):
+        if not pyos.os.path.exists(path):
+            pyos.GUI.ErrorDialog("The path you entered does not exist or cannot be accessed.").display()
+            return
+        self.path = path.replace("\\", "/")
+        self.loadDir()
+            
+    def navAsk(self):
+        pyos.GUI.AskDialog("Enter Path", "Enter the directory you wish to navigate to.", self.navToAbs).display()
+        
+    def displayLocationDialog(self):
+        pyos.GUI.OKDialog("Location", "Current Location\n"+self.path.replace("/", "/ ")).display()
+        
+    def move(self):
+        if self.selected == []:
+            pyos.GUI.OKDialog("Copy", "Please select one or more items to copy.").display()
+            return
+        if self.toMove == None:
+            self.toMove = self.selected[:]
+            self.moveBtn.border = 2
+            self.moveBtn.borderColor = state.getColorPalette().getColor("accent")
+            return
         else:
-            if pyos.os.path.isdir(combined):
-                self.path = combined
-                load()
-                
-    def toAbs(self, path):
-        if path == "Cancel": return
-        self.path = path
-        load()
+            Operations.move(self.toMove, self.path)
+            self.clearMove()
+            
+    def clearMove(self):
+        self.toMove = None
+        self.moveBtn.border = 0
+        self.moveBtn.borderColor = (0, 0, 0, 0)
+        self.moveBtn.refresh()
+        self.selected = []
+        self.loadDir()
+            
+    def copy(self):
+        if self.selected == []:
+            pyos.GUI.OKDialog("Copy", "Please select one or more items to copy.").display()
+            return
+        if self.toCopy == None:
+            self.toCopy = self.selected[:]
+            self.copyBtn.border = 2
+            self.copyBtn.borderColor = state.getColorPalette().getColor("accent")
+            return
+        else:
+            Operations.copy(self.toCopy, self.path)
+            self.clearCopy()
+            
+    def clearCopy(self):
+        self.toCopy = None
+        self.copyBtn.border = 0
+        self.copyBtn.borderColor = (0, 0, 0, 0)
+        self.copyBtn.refresh()
+        self.selected = []
+        self.loadDir()
         
-    def subToAbs(self, path):
-        return pyos.os.path.join(self.path, path)
-    
-    def contFolder(self, path):
-        return path.rstrip(self.slash)[:path.rstrip(self.slash).rfind(self.slash)+1]
-    
-    def getExtension(self, path):
-        return path[path.rfind("."):]
-
-def getDefaultButtonBar():
-    buttonBar = pyos.GUI.ButtonRow((0, 0), width=application.ui.width, height=40, color=state.getColorPalette().getColor("background"), padding=0, margin=0,
-                                   border=1, borderColor=state.getColorPalette().getColor("accent"))
-    button_home = pyos.GUI.Image((0,0), path="res/icons/files_home.png", width=40, height=40,
-                                 onClick=navigator.home)
-    button_up = pyos.GUI.Image((0,0), path="res/icons/files_up.png", width=40, height=40,
-                                 onClick=navigator.up)
-    button_goto = pyos.GUI.Image((0,0), path="res/icons/files_goto.png", width=40, height=40,
-                                 onClick=goToPath)
-    button_delete = pyos.GUI.Image((0,0), path="res/icons/files_delete.png", width=40, height=40,
-                                 onClick=Operations.delete)
-    button_move = pyos.GUI.Image((0,0), path="res/icons/files_move.png", width=40, height=40,
-                                 onClick=Operations.move)
-    button_copy = pyos.GUI.Image((0,0), path="res/icons/files_copy.png", width=40, height=40,
-                                 onClick=Operations.copy)
-    buttonBar.addChild(button_home)
-    buttonBar.addChild(button_up)
-    buttonBar.addChild(button_goto)
-    buttonBar.addChild(button_delete)
-    buttonBar.addChild(button_move)
-    buttonBar.addChild(button_copy)
-    return buttonBar
-
-def getSelectButtonBar():
-    buttonBar = pyos.GUI.ButtonRow((0, 0), width=application.ui.width, height=40, color=state.getColorPalette().getColor("background"), padding=0, margin=0,
-                                   border=1, borderColor=state.getColorPalette().getColor("accent"))
-    button_select = pyos.GUI.Image((0,0), path="res/icons/files_select.png", width=40, height=40,
-                                 onClick=picker.select, onClickData=("current",))
-    button_home = pyos.GUI.Image((0,0), path="res/icons/files_home.png", width=40, height=40,
-                                 onClick=navigator.home)
-    button_up = pyos.GUI.Image((0,0), path="res/icons/files_up.png", width=40, height=40,
-                                 onClick=navigator.up)
-    button_goto = pyos.GUI.Image((0,0), path="res/icons/files_goto.png", width=40, height=40,
-                                 onClick=goToPath)
-    buttonBar.addChild(button_select)
-    buttonBar.addChild(button_home)
-    buttonBar.addChild(button_up)
-    buttonBar.addChild(button_goto)
-    return buttonBar
-
-def select(cont, path):
-    selected.append(navigator.subToAbs(path))
-    cont.backgroundColor = state.getColorPalette().getColor("accent")
-
-def deselect(cont, path):
-    selected.remove(navigator.subToAbs(path))
-    if cont != None:
-        cont.backgroundColor = state.getColorPalette().getColor("background")
+    def delete(self, resp):
+        if resp == "Yes":
+            Operations.delete(self.selected)
+            self.selected = []
+            self.loadDir()
         
-def toggleSelect(cont, path):
-    if cont.backgroundColor == state.getColorPalette().getColor("accent"):
-        deselect(cont, path)
-    else:
-        select(cont, path)
+    def deleteAsk(self):
+        pyos.GUI.YNDialog("Delete", "Are you sure you wish to permanently delete "+str(len(self.selected))+" items?", self.delete).display()
         
-def fileInfoDialog(path, short):
-    isFile = pyos.os.path.isfile(path)
-    infostr = "Resource information for "+short+"\n\n"
-    if isFile:
-        infostr += "Size: "+str(pyos.os.path.getsize(path) / 1000)+"kb\n"
-    else:
-        infostr += "Directory Children: "+str(len(pyos.os.listdir(path)))+"\n"
-    pyos.GUI.OKDialog(short, infostr).display()
-
-def getFileEntry(fpath, selMode=False):
-    if fpath.startswith("."): return False
-    abspath = navigator.subToAbs(fpath)
-    cont = pyos.GUI.Container((0, 0), width=container.container.width, height=30, color=state.getColorPalette().getColor("background"),
-                              onClick=navigator.toSub, onClickData=(fpath, selMode))
-    isFile = pyos.os.path.isfile(abspath)
-    icon = None
-    if isFile:
-        icon = pyos.GUI.Image((0, 0), path="res/icons/file.png", width=30, height=30,
-                              onClick=toggleSelect, onClickData=(cont, fpath))
-    else:
-        icon = pyos.GUI.Image((0, 0), path="res/icons/folder.png", width=30, height=30,
-                              onClick=toggleSelect, onClickData=(cont, fpath))
-    filename = pyos.GUI.Text((32, 7), fpath, state.getColorPalette().getColor("item"), 15,
-                             onClick=navigator.toSub, onClickData=(fpath, selMode))
-    size = None
-    if isFile:
-        size = pyos.GUI.Text((cont.width-35, 7), str(pyos.os.path.getsize(fpath) / 1000)+"kb", state.getColorPalette().getColor("item"), 15,
-                             onClick=fileInfoDialog, onClickData=(abspath, fpath))
-    else:
-        size = pyos.GUI.Text((cont.width-35, 7), "dir", state.getColorPalette().getColor("item"), 15,
-                             onClick=fileInfoDialog, onClickData=(abspath, fpath))
-    cont.addChild(icon)
-    cont.addChild(filename)
-    cont.addChild(size)
-    if abspath in selected:
-        cont.backgroundColor = state.getColorPalette().getColor("accent")
-    cont.refresh()
-    return cont
-
-def load(selMode=False):
-    pathText.text = navigator.path
-    pathText.refresh()
-    try:
-        container.clearChildren()
-    except: pass
-    for loc in sorted([p for p in pyos.os.listdir(navigator.path) if pyos.os.path.isdir(p)]) + sorted([p for p in pyos.os.listdir(navigator.path) if pyos.os.path.isfile(p)]):
-        entry = getFileEntry(loc)
-        if entry:
-            container.addChild(entry)
-    #container.goToPage()
-    
-def loadUI():
-    global container, pathText, navigator
-    loadFileOpeners()
-    navigator = Navigator()
-    container = pyos.GUI.ListScrollableContainer((0,50), width=application.ui.width, height=application.ui.height-50, padding=0, margin=0)
-    pathText = pyos.GUI.Text((0, 40), navigator.path, state.getColorPalette().getColor("item"), 10, width=application.ui.width)
-    bar = getDefaultButtonBar()
-    application.ui.addChild(bar)
-    application.ui.addChild(pathText)
-    application.ui.addChild(container)
-    load()
-
 def onStart(s, a):
-    global application, state
-    application = a
+    global state, application
     state = s
-    loadUI()
+    application = a
+    explorer = FileExplorer((0, 0), width=application.ui.width, height=application.ui.height)
+    application.explorer = explorer
+    application.ui.addChild(explorer)
     
-class LocationPicker(pyos.GUI.Overlay):
-    def __init__(self, onSelected, accept="files"):
-        global application, state, container, pathText, navigator, picker
-        picker = self
-        self.accept = accept
-        self.onSelected = onSelected
-        self.application = state.getActiveApplication()
-        application = self.application
-        super(LocationPicker, self).__init__((0, 0), width=self.application.ui.width, height=self.application.ui.height)
-        loadFileOpeners()
-        navigator = Navigator()
-        container = pyos.GUI.ListScrollableContainer((0,50), width=application.ui.width, height=application.ui.height-50, padding=0, margin=0)
-        pathText = pyos.GUI.Text((0, 40), navigator.path, state.getColorPalette().getColor("item"), 10, width=application.ui.width)
-        bar = getSelectButtonBar()
-        self.baseContainer.addChild(bar)
-        self.baseContainer.addChild(pathText)
-        self.baseContainer.addChild(container)
-        load()
-        
-    def hide(self):
-        global picker
-        picker = None
-        super(LocationPicker, self).hide()
-        
-    def select(self, path):
-        if path == "current": path = navigator.path
-        if self.accept == "file" and pyos.os.path.isfile(path):
-            self.hide()
-            passSelectedDir(self.onSelected, self)
-            return
-        else:
-            pyos.GUI.OKDialog("Invalid File", "The application requested a file, but you selected a directory. Select a file instead.").display()
-            return
-        if self.accept == "folder" and pyos.os.path.isdir(path):
-            self.hide()
-            passSelectedDir(self.onSelected, self)
-        else:
-            pyos.GUI.OKDialog("Invalid Folder", "The application requested a directory, but you selected a file. Select a folder instead.").display()
+def onResume():
+    print "Resumed Files"
+    application.explorer.loadDir()

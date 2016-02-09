@@ -1,12 +1,12 @@
 {
-  "name": "files",
-  "title": "Files",
+  "name": "clock",
+  "title": "Clock",
   "version": 1.0,
   "author": "Adam Furman",
-  "module": "files",
+  "module": "clock",
   "main": "run",
   "more": {
-    "icon": "files.png",
+    "icon": "clock.png",
     "onStart": "onStart",
     "onResume": "onResume",
     "colorScheme": "normal"

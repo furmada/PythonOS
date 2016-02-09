@@ -10,12 +10,7 @@ def lines(data):
             count += 1
     return count
 
-def loadFile(s, a, path):
-    global state, app
-    state = s
-    app = a
-    app.ui.clearChildren()
-    app.ui.clearDialog()
+def loadFile(path):
     f = open(path, "rU")
     contents = str(f.read())
     lnCount = lines(contents)
@@ -30,4 +25,6 @@ def onStart(s, a):
     global state, app
     state = s
     app = a
-    state.getApplicationList().getApp("files").getModule().LocationPicker(loadFile).display()
+    if app.file != None:
+        loadFile(app.file)
+        app.file = None

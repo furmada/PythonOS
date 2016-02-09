@@ -9,9 +9,6 @@
   	"icon": "file-reader.png",
     "onStart": "onStart",
     "colorScheme": "light",
-    "file": {
-      "method": "loadFile",
-      "supported": [".txt", ".htm", ".html", ".py", ".pyw", ".json", ".md"]
-    }
+    "file": [".txt", ".htm", ".html", ".py", ".pyw", ".json", ".md"]
   }
 }
