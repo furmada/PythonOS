@@ -7,5 +7,6 @@
   "apps/files/": "files",
   "apps/about/": "about",
   "apps/file-reader/": "file-reader",
-  "apps/clock/": "clock"
+  "apps/clock/": "clock",
+  "apps/image-viewer/": "image-viewer"
 }

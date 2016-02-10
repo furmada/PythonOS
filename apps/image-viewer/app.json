@@ -1,0 +1,14 @@
+{
+  "name": "image-viewer",
+  "title": "Pictures",
+  "version": 1.0,
+  "author": "Adam Furman",
+  "module": "image-viewer",
+  "main": "run",
+  "more": {
+    "icon": "image-viewer.png",
+    "onStart": "onStart",
+    "colorScheme": "dark",
+    "file": [".png", ".jpg", ".jpeg", ".bmp", ".gif", ".pcx", ".tga", ".tif"]
+  }
+}

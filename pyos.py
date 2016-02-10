@@ -197,6 +197,14 @@ class GUI(object):
     def getScreen(self):
         return screen
     
+    def monitorFPS(self):
+        real = round(self.timer.get_fps())
+        if real >= self.update_interval and self.update_interval < 30:
+            self.update_interval += 1
+        else:
+            if self.update_interval > 10:
+                self.update_interval -= 1
+    
     @staticmethod
     def getCenteredCoordinates(component, larger):
         return [(larger.width / 2) - (component.width / 2), (larger.height / 2) - (component.height / 2)]
@@ -1275,19 +1283,26 @@ class GUI(object):
             super(GUI.YNDialog, self).__init__(title, text, [ybtn, nbtn], onResponseRecorded)
             
     class AskDialog(Dialog):
-        def __init__(self, title, text, onResposeRecorded=None):
+        def __init__(self, title, text, onResposeRecorded=None, onResponseRecordedData=()):
             okbtn = GUI.Button((0,0), "OK", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
                                width=50, onClick=self.returnRecordedResponse)
             cancelbtn = GUI.Button((0,0), "Cancel", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
                                width=50, onClick=self.recordResponse, onClickData=("Cancel",))
             super(GUI.AskDialog, self).__init__(title, text, [okbtn, cancelbtn], onResposeRecorded)
+            self.onResponseRecordedData = onResponseRecordedData
             self.textComponent.height -= 20
             self.textComponent.refresh()
             self.textEntryField = GUI.TextEntryField((0, 90), width=self.container.width, height=20)
             self.container.addChild(self.textEntryField)
             
         def returnRecordedResponse(self):
-            super(GUI.AskDialog, self).recordResponse(self.textEntryField.getText())
+            self.recordResponse(self.textEntryField.getText())
+            
+        def recordResponse(self, response):
+            self.response = response
+            self.hide()
+            if self.onResponseRecorded != None:
+                self.onResponseRecorded(*(self.onResponseRecordedData)+(self.response,))
             
     class CustomContentDialog(Dialog):
         def __init__(self, title, customComponent, actionButtons, onResponseRecorded=None):
@@ -1779,6 +1794,7 @@ class State(object):
         while True:
             #Limit FPS
             state.getGUI().timer.tick(state.getGUI().update_interval)
+            state.getGUI().monitorFPS()
             #Update event queue
             state.getEventQueue().check()
             #Refresh main thread controller

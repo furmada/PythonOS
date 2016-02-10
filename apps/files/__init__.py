@@ -69,6 +69,13 @@ class Operations:
             pyos.os.mkdir(name)
         except:
             pyos.GUI.ErrorDialog("Failed to make a new folder.").display()
+            
+    @staticmethod
+    def rename(path, new):
+        try:
+            pyos.os.rename(path, new)
+        except:
+            pyos.GUI.ErrorDialog("Rename failed.").display()
                     
 class ApplicationSupport(object):
     def __init__(self):
@@ -82,7 +89,7 @@ class ApplicationSupport(object):
     def getSuitableApps(self, ftype):
         suitable = []
         for app, data in self.applications.iteritems():
-            if ftype in data:
+            if ftype in data or ftype.lower() in data:
                 suitable.append(app)
         return suitable
     
@@ -133,10 +140,11 @@ class FileEntry(pyos.GUI.Container):
         return absolute[absolute.rfind("/")+1:]
     
     def __init__(self, position, filepath, **data):
-        data["onClickData"] = (self,)
-        super(FileEntry, self).__init__(position, **data)
         self.absolutePath = filepath.replace("\\", "/")
         self.shortPath = FileEntry.getFileName(self.absolutePath)
+        data["onClickData"] = (self,)
+        data["onLongClickData"] = (self.shortPath, self.absolutePath)
+        super(FileEntry, self).__init__(position, **data)
         self.selected = False
         if data.get("selected", False):
             self.toggleSelection()
@@ -153,9 +161,11 @@ class FileEntry(pyos.GUI.Container):
                                        onClick=self.toggleSelection,
                                        onLongClick=self.eventBindings.get("onClick", pyos.Application.dummy), onLongClickData=(self,))
         self.sizeText = pyos.GUI.Text((self.width-40, 12), self.getSize(), state.getColorPalette().getColor("item"), 16,
-                                      onClick=self.eventBindings.get("onClick", pyos.Application.dummy), onClickData=(self,))
+                                      onClick=self.eventBindings.get("onClick", pyos.Application.dummy), onClickData=(self,),
+                                      onLongClick=self.eventBindings.get("onLongClick", pyos.Application.dummy), onLongClickData=(self.shortPath, self.absolutePath))
         self.text = pyos.GUI.Text((41, 12), self.shortPath, state.getColorPalette().getColor("item"), 16,
-                                  onClick=self.eventBindings.get("onClick", pyos.Application.dummy), onClickData=(self,))
+                                  onClick=self.eventBindings.get("onClick", pyos.Application.dummy), onClickData=(self,),
+                                  onLongClick=self.eventBindings.get("onLongClick", pyos.Application.dummy), onLongClickData=(self.shortPath, self.absolutePath))
         self.addChild(self.icon)
         self.addChild(self.text)
         self.addChild(self.sizeText)
@@ -242,7 +252,8 @@ class FileExplorer(pyos.GUI.Container):
             entryContainer = FileEntry((0, -80), pyos.os.path.join(self.path, entry), width=self.fileList.container.width, height=40,
                                              color=state.getColorPalette().getColor("background"), selected=(pyos.os.path.join(self.path, entry) in self.selected),
                                              onSelected=self.selected.append, onDeselected=self.selected.remove,
-                                             onClick=self.navToSub
+                                             onClick=self.navToSub,
+                                             onLongClick=self.renameAsk
                                        )
             self.fileList.addChild(entryContainer)
         if self.fileList.container.childComponents == []:
@@ -334,6 +345,14 @@ class FileExplorer(pyos.GUI.Container):
         
     def deleteAsk(self):
         pyos.GUI.YNDialog("Delete", "Are you sure you wish to permanently delete "+str(len(self.selected))+" items?", self.delete).display()
+        
+    def rename(self, path, new):
+        if new != "" and new != "Cancel":
+            Operations.rename(path, pyos.os.path.join(self.path, new))
+            self.loadDir()
+        
+    def renameAsk(self, short, path):
+        pyos.GUI.AskDialog("Rename", "Rename "+short+" to:", self.rename, (path,)).display()
         
 def onStart(s, a):
     global state, application
