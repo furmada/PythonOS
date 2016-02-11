@@ -8,5 +8,6 @@
   "apps/about/": "about",
   "apps/file-reader/": "file-reader",
   "apps/clock/": "clock",
-  "apps/image-viewer/": "image-viewer"
+  "apps/image-viewer/": "image-viewer",
+  "apps/calculator/": "calculator"
 }

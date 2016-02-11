@@ -1,0 +1,13 @@
+{
+  "name": "calculator",
+  "title": "Calculator",
+  "version": 1.0,
+  "author": "Adam Furman",
+  "module": "calculator",
+  "main": "run",
+  "more": {
+    "icon": "calculator.png",
+    "onStart": "onStart",
+    "colorScheme": "dark"
+  }
+}
