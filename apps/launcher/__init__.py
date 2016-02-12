@@ -2,6 +2,11 @@ import pyos
 
 application = None
 
+def alphabetize(apps):
+    appd = {}
+    for a in apps: appd[a.title] = a
+    return [appd[a] for a in sorted(appd)]
+
 def getVisibleAppList():
     visible = []
     for app in state.getApplicationList().getApplicationList():
@@ -15,7 +20,7 @@ def loadApps(pstate, app):
     application = state.getActiveApplication()
     application.ui.backgroundColor = state.getColorPalette().getColor("background")
     pagedContainer = pyos.GUI.GriddedPagedContainer((0, 0), width=application.ui.width, height=application.ui.height, color=state.getColorPalette().getColor("background"))
-    for app in getVisibleAppList():
+    for app in alphabetize(getVisibleAppList()):
         appPane = pyos.GUI.Container((0, 0), transparent=True, width=pagedContainer.perColumn, height=pagedContainer.perRow, onClick=app.activate)
         appPane.SKIP_CHILD_CHECK = True
         appIcon = pyos.GUI.Image((0, 0), surface=app.getIcon(), onClick=app.activate) #Long click uninstall

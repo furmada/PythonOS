@@ -1,0 +1,13 @@
+{
+  "name": "timer",
+  "title": "Timer",
+  "version": 1.0,
+  "author": "Adam Furman",
+  "module": "timer",
+  "main": "run",
+  "more": {
+    "icon": "timer.png",
+    "onStart": "onStart",
+    "colorScheme": "normal"
+  }
+}

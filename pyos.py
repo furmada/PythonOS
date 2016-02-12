@@ -565,6 +565,8 @@ class GUI(object):
             
         def refresh(self):
             self.surface = self.getRenderedText()
+            self.width = self.surface.get_width()
+            self.height = self.surface.get_height()
             
         def setText(self, text):
             self.text = str(text)
@@ -660,6 +662,11 @@ class GUI(object):
             self.textComponent.setPosition(GUI.getCenteredCoordinates(self.textComponent, self))
             self.backgroundColor = bgColor
             self.addChild(self.textComponent)
+            
+        def setText(self, text):
+            self.textComponent.text = str(text)
+            self.textComponent.refresh()
+            self.textComponent.setPosition(GUI.getCenteredCoordinates(self.textComponent, self))
             
         def render(self, largerSurface):
             super(GUI.Button, self).render(largerSurface)

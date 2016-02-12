@@ -9,5 +9,6 @@
   "apps/file-reader/": "file-reader",
   "apps/clock/": "clock",
   "apps/image-viewer/": "image-viewer",
-  "apps/calculator/": "calculator"
+  "apps/calculator/": "calculator",
+  "apps/timer/": "timer"
 }
