@@ -21,7 +21,11 @@ def loadApps(pstate, app):
     application.ui.backgroundColor = state.getColorPalette().getColor("background")
     pagedContainer = pyos.GUI.GriddedPagedContainer((0, 0), width=application.ui.width, height=application.ui.height, color=state.getColorPalette().getColor("background"))
     for app in alphabetize(getVisibleAppList()):
-        appPane = pyos.GUI.Container((0, 0), transparent=True, width=pagedContainer.perColumn, height=pagedContainer.perRow, onClick=app.activate)
+        appPane = None
+        if app in state.getApplicationList().activeApplications:
+            appPane = pyos.GUI.Container((0, 0), color=state.getColorPalette().getColor("accent")+(100,), width=pagedContainer.perColumn, height=pagedContainer.perRow, onClick=app.activate)
+        else:
+            appPane = pyos.GUI.Container((0, 0), transparent=True, width=pagedContainer.perColumn, height=pagedContainer.perRow, onClick=app.activate)
         appPane.SKIP_CHILD_CHECK = True
         appIcon = pyos.GUI.Image((0, 0), surface=app.getIcon(), onClick=app.activate) #Long click uninstall
         appName = pyos.GUI.Text((0, appIcon.height), app.title, state.getColorPalette().getColor("item"), 12, onClick=app.activate)
