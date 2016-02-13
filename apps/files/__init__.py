@@ -206,7 +206,7 @@ class FileExplorer(pyos.GUI.Container):
         self.path = str(pyos.__file__).rstrip(".pyos.pyc").replace("\\", "/")
         self.selected = []
         self.fileList = pyos.GUI.ListScrollableContainer((0, 40), width=self.width, height=self.height-40, color=state.getColorPalette().getColor("background"),
-                                                         margin=0, padding=0, scrollAmount=40,
+                                                         margin=0, padding=0, scrollAmount=80,
                                                          onLongClick=self.newFolderAsk)
         self.addChild(self.fileList)
         self.generateButtonBar()

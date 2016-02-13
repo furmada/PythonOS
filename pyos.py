@@ -1001,6 +1001,8 @@ class GUI(object):
             return visible
         
         def getClickedChild(self, mouseEvent, offsetX=0, offsetY=0):
+            if not self.checkClick(mouseEvent, offsetX, offsetY):
+                return None
             clicked = self.scrollBar.getClickedChild(mouseEvent, offsetX + self.container.width, offsetY + self.position[1])
             if clicked != None: return clicked
             visible = self.getVisibleChildren()
@@ -1066,7 +1068,7 @@ class GUI(object):
         def removeChild(self, component):
             super(GUI.ListScrollableContainer, self).removeChild(component)
             childrenCopy = self.container.childComponents[:]
-            self.childComponents = []
+            self.container.childComponents = []
             for child in childrenCopy:
                 self.addChild(child)
                 

@@ -6,6 +6,9 @@ def onStart(s, a):
     app = a
     timer = Timer()
     
+def onResume():
+    app.ui.backgroundColor = (53, 106, 166)
+    
 class Timer(object):
     def __init__(self):
         self.minutes = 0

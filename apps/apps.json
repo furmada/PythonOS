@@ -10,5 +10,6 @@
   "apps/clock/": "clock",
   "apps/image-viewer/": "image-viewer",
   "apps/calculator/": "calculator",
-  "apps/timer/": "timer"
+  "apps/timer/": "timer",
+  "apps/stopwatch/": "stopwatch"
 }
