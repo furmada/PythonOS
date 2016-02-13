@@ -9,6 +9,15 @@ def onStart(s, a):
 def onResume():
     app.ui.backgroundColor = (53, 106, 166)
     
+def showNotification():
+    state.getNotificationQueue().push(pyos.Notification("Timer Expired", "The timer has stopped.", source=app, image=app.getIcon()))
+    
+def setNotification():
+    if not timer.started: return
+    task = pyos.TimedTask(datetime.datetime.now() + datetime.timedelta(minutes=int(timer.min_text.text.rstrip("m")), seconds=int(timer.sec_text.text.rstrip("s"))),
+                          showNotification)
+    state.getThreadController().addThread(task)
+    
 class Timer(object):
     def __init__(self):
         self.minutes = 0
@@ -37,7 +46,7 @@ class Timer(object):
         self.startBtn = pyos.GUI.Button((0, app.ui.height-80), "Start", (200, 255, 200), (20, 20, 20), 20, width=app.ui.width/2, height=80,
                                         onClick=self.start)
         self.resetBtn = pyos.GUI.Button((app.ui.width/2, app.ui.height-80), "Reset", (255, 200, 200), (20, 20, 20), 20, width=app.ui.width/2, height=80,
-                                        onClick=self.stop)
+                                        onClick=self.stop, onLongClick=self.completeReset)
         
         app.ui.addChild(self.min_text)
         app.ui.addChild(self.sec_text)
@@ -62,6 +71,11 @@ class Timer(object):
             self.startBtn.setText("Pause")
             self.started = True
         self.startBtn.refresh()
+        
+    def completeReset(self):
+        self.minutes = 0
+        self.seconds = 0
+        self.stop()
         
     def stop(self):
         self.started = False

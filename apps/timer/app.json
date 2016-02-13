@@ -9,6 +9,8 @@
     "icon": "timer.png",
     "onStart": "onStart",
     "onResume": "onResume",
+    "onPause": "setNotification",
+    "onStop": "setNotification",
     "colorScheme": "normal"
   }
 }

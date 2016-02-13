@@ -13,10 +13,6 @@ def onLoad(s, a):
                                  12, width=100, height=20, onClick=state.getApplicationList().getApp("state-shell").activate)
     app.ui.addChild(welcomeText)
     app.ui.addChild(betaButton)
-    t = 0
-    while t < 10:
-        state.getNotificationQueue().push(pyos.Notification("Welcome "+str(t), "Python OS 6 beta 1"))
-        t += 1
     
 def onUnload():
     state.getFunctionBar().container.backgroundColor = state.getColorPalette().getColor("background")

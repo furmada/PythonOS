@@ -78,7 +78,7 @@ class Thread(object):
             
 class Task(Thread):
     def __init__(self, method, *additionalData):
-        super(Thread, self).__init__(method)
+        super(Task, self).__init__(method)
         self.returnedData = None
         self.additionalData = additionalData
         
@@ -94,7 +94,7 @@ class Task(Thread):
     
 class StagedTask(Task):    
     def __init__(self, method, maxStage=10):
-        super(Task, self).__init__(method)
+        super(StagedTask, self).__init__(method)
         self.stage = 1
         self.maxStage = maxStage
     
@@ -103,6 +103,16 @@ class StagedTask(Task):
         self.stage += 1
         if self.stage >= self.maxStage:
             self.setStop()
+            
+class TimedTask(Task):
+    def __init__(self, executeOn, method, *additionalData):
+        self.executionTime = executeOn
+        super(TimedTask, self).__init__(method, *additionalData)
+        
+    def run(self):
+        delta = self.executionTime - datetime.now()
+        if delta.total_seconds() <= 0:
+            super(TimedTask, self).run()
             
 class ParallelTask(Task):
     #Warning: This starts a new thread.
@@ -1093,6 +1103,8 @@ class GUI(object):
             return time[time.find(" ")+1:time.find(":", time.find(":")+1)]
         
         def render(self):
+            if state.getNotificationQueue().new:
+                self.clock_text.color = (255, 59, 59)
             self.clock_text.text = self.formatTime()
             self.clock_text.refresh()
             self.container.render(screen)
@@ -1105,11 +1117,9 @@ class GUI(object):
                 
         def toggleNotificationMenu(self):
             if self.notificationMenu.displayed: 
-                print "Hiding"
                 self.notificationMenu.hide()
                 return
             else: 
-                print "Displaying"
                 self.notificationMenu.display()
             
     class Keyboard(object):
@@ -1371,6 +1381,8 @@ class GUI(object):
                 
         def display(self):
             self.refresh()
+            state.getNotificationQueue().new = False
+            state.getFunctionBar().clock_text.color = state.getColorPalette().getColor("accent")
             super(GUI.NotificationMenu, self).display()
             
         def clearAll(self):
@@ -1642,12 +1654,16 @@ class Notification(object):
         self.active = True
         self.source = data.get("source", None)
         self.image = data.get("image", None)
-        self.onSelected = data.get("onSelected", Application.dummy)
+        if self.source != None:
+            self.onSelectedMethod = data.get("onSelected", self.source.activate)
+        else:
+            self.onSelectedMethod = data.get("onSelected", Application.dummy)
         self.onSelectedData = data.get("onSelectedData", ())
         
     def onSelected(self):
-        self.onSelected(*self.onSelectedData)
         self.clear()
+        state.getFunctionBar().toggleNotificationMenu()
+        self.onSelectedMethod(*self.onSelectedData)
         
     def clear(self):
         self.active = False
@@ -1661,7 +1677,10 @@ class Notification(object):
                 self.image.setPosition([0, 0])
                 cont.addChild(self.image)
             except:
-                self.image = GUI.Image((0, 0), path=self.image, onClick=self.onSelected)
+                if isinstance(self.image, pygame.Surface):
+                    self.image = GUI.Image((0, 0), surface=self.image, onClick=self.onSelected)
+                else:
+                    self.image = GUI.Image((0, 0), path=self.image, onClick=self.onSelected)
         else:
             self.image = GUI.Image((0, 0), surface=state.getIcons().getLoadedIcon("unknown"), onClick=self.onSelected, onLongClick=self.clear)
         rtitle = GUI.Text((41, 0), self.title, (200, 200, 200), 20, onClick=self.onSelected, onLongClick=self.clear)
@@ -1674,6 +1693,7 @@ class Notification(object):
 class NotificationQueue(object):
     def __init__(self):
         self.notifications = []
+        self.new = False
         
     def sweep(self):
         for notification in self.notifications:
@@ -1682,6 +1702,7 @@ class NotificationQueue(object):
                 
     def push(self, notification):
         self.notifications.insert(0, notification)
+        self.new = True
         
     def clear(self):
         self.notifications = []
