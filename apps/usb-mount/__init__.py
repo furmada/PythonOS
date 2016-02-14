@@ -4,7 +4,7 @@ import os
 mounted = []
 
 def onStart(s, a):
-    global state, app
+    global state, app, mounter
     state = s
     app = a
     mounter = USBMount()
@@ -38,6 +38,7 @@ class USBMount(object):
         app.ui.addChild(pyos.GUI.Text((2, 8), "USB List", state.getColorPalette().getColor("item"), 24))
         app.ui.addChild(pyos.GUI.Button((app.ui.width-80, 0), "Refresh", (100, 200, 100), (20, 20, 20), 24, onClick=self.refresh))
         app.ui.addChild(self.usblist)
+        self.populateList()
         
     def mountAsk(self, dev):
         pyos.GUI.OKCancelDialog("Mount", "Please select a folder to mount "+dev.device+" in.", self.mountSelect, (dev,)).display()
@@ -73,6 +74,7 @@ class USBMount(object):
         try:
             return [os.path.join("/dev/", device) for device in os.listdir("/dev/") if device.find("sd") != -1]
         except:
+            pyos.GUI.ErrorDialog("Unable to list /dev/.").display()
             return []
     
     def refresh(self):
