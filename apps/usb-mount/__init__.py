@@ -11,7 +11,8 @@ def onStart(s, a):
     
 class USBEntry(pyos.GUI.Container):
     def __init__(self, device, **data):
-        data["onClick"] = mounter.mountAsk(self)
+        data["onClick"] = mounter.mountAsk
+        data["onClickData"] = (self,)
         super(USBEntry, self).__init__((0, 0), **data)
         self.SKIP_CHILD_CHECK = True
         self.device = device
