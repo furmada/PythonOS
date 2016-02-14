@@ -69,9 +69,9 @@ class USBMount(object):
             
     def doProperAction(self, device):
         if device.mounted:
-            unmountAsk(device)
+            self.unmountAsk(device)
         else:
-            mountAsk(device)
+            self.mountAsk(device)
         
     def populateList(self):
         self.usblist.clearChildren()
