@@ -16,7 +16,9 @@ class USBEntry(pyos.GUI.Container):
         self.SKIP_CHILD_CHECK = True
         self.device = device
         self.location = None
-        self.mounted = device in mounted
+        self.mounted = device in [e[0] for e in mounted]
+        if self.mounted:
+            self.location = [e[1] for e in mounted if e[0] == self.device][0]
         self.title = None
         if self.mounted:
             self.title = pyos.GUI.Text((2, 8), self.device.strip("/dev/"), (100, 200, 100), 24)
@@ -25,7 +27,7 @@ class USBEntry(pyos.GUI.Container):
         self.addChild(self.title)
         
     def recheck(self):
-        self.mounted = self.device in mounted
+        self.mounted = self.device in [e[0] for e in mounted]
         if self.mounted:
             self.title.color = (100, 200, 100)
         else:
@@ -50,7 +52,7 @@ class USBMount(object):
         
     def mount(self, device, loc):
         global mounted
-        mounted.append(device.device)
+        mounted.append([device.device, loc])
         device.location = os.path.join(loc, "USB"+str(len(mounted)))
         os.mkdir(device.location)
         os.system("sudo mount -t auto "+device.device+" "+device.location)
