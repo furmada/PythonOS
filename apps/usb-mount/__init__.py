@@ -73,7 +73,7 @@ class USBMount(object):
         
     def getList(self):
         try:
-            return [os.path.join("/dev/", device) for device in os.listdir("/dev/") if device.find("sd") != -1]
+            return [os.path.join("/dev/", device) for device in os.listdir("/dev/") if (device.find("sd") != -1 and len(device) > 3)]
         except:
             pyos.GUI.ErrorDialog("Unable to list /dev/.").display()
             return []

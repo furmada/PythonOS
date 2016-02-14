@@ -1363,7 +1363,7 @@ class GUI(object):
                                width=50, onClick=self.recordResponse, onClickData=("OK",))
             cancbtn = GUI.Button((0,0), "Cancel", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
                                width=50, onClick=self.recordResponse, onClickData=("Cancel",))
-            super(GUI.YNDialog, self).__init__(title, text, [okbtn, cancbtn], onResponseRecorded)
+            super(GUI.OKCancelDialog, self).__init__(title, text, [okbtn, cancbtn], onResponseRecorded)
             self.onResponseRecordedData = onResponseRecordedData
             
         def recordResponse(self, response):
