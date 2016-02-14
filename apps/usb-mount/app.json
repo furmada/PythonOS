@@ -1,0 +1,13 @@
+{
+  "name": "usb-mount",
+  "title": "USB Mount",
+  "version": 1.0,
+  "author": "Adam Furman",
+  "module": "usb-mount",
+  "main": "run",
+  "more": {
+    "icon": "usb-mount.png",
+    "onStart": "onStart",
+    "colorScheme": "dark"
+  }
+}

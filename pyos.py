@@ -1343,12 +1343,34 @@ class GUI(object):
             self.container.backgroundColor = state.getColorPalette().getColor("warning")
             
     class YNDialog(Dialog):
-        def __init__(self, title, text, onResponseRecorded=None):
+        def __init__(self, title, text, onResponseRecorded=None, onResponseRecordedData=()):
             ybtn = GUI.Button((0,0), "Yes", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
                                width=50, onClick=self.recordResponse, onClickData=("Yes",))
             nbtn = GUI.Button((0,0), "No", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
                                width=50, onClick=self.recordResponse, onClickData=("No",))
             super(GUI.YNDialog, self).__init__(title, text, [ybtn, nbtn], onResponseRecorded)
+            self.onResponseRecordedData = onResponseRecordedData
+            
+        def recordResponse(self, response):
+            self.response = response
+            self.hide()
+            if self.onResponseRecorded != None:
+                self.onResponseRecorded(*(self.onResponseRecordedData)+(self.response,))
+            
+    class OKCancelDialog(Dialog):
+        def __init__(self, title, text, onResponseRecorded=None, onResponseRecordedData=()):
+            okbtn = GUI.Button((0,0), "OK", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
+                               width=50, onClick=self.recordResponse, onClickData=("OK",))
+            cancbtn = GUI.Button((0,0), "Cancel", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
+                               width=50, onClick=self.recordResponse, onClickData=("Cancel",))
+            super(GUI.YNDialog, self).__init__(title, text, [okbtn, cancbtn], onResponseRecorded)
+            self.onResponseRecordedData = onResponseRecordedData
+            
+        def recordResponse(self, response):
+            self.response = response
+            self.hide()
+            if self.onResponseRecorded != None:
+                self.onResponseRecorded(*(self.onResponseRecordedData)+(self.response,))
             
     class AskDialog(Dialog):
         def __init__(self, title, text, onResposeRecorded=None, onResponseRecordedData=()):

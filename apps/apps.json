@@ -12,5 +12,6 @@
   "apps/calculator/": "calculator",
   "apps/timer/": "timer",
   "apps/stopwatch/": "stopwatch",
-  "apps/music-player": "music-player"
+  "apps/music-player": "music-player",
+  "apps/usb-mount": "usb-mount"
 }
