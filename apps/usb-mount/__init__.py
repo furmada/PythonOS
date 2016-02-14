@@ -52,6 +52,7 @@ class USBMount(object):
         global mounted
         mounted.append(device.device)
         device.location = os.path.join(loc, "USB"+str(len(mounted)+1))
+        os.mkdir(device.location)
         os.system("sudo mount -t auto "+device.device+" "+device.location)
         self.populateList()
         
@@ -63,13 +64,20 @@ class USBMount(object):
         if resp == "Yes":
             mounted.remove(device.device)
             os.system("sudo umount "+device.location)
+            os.rmdir(device.location)
             self.populateList()
+            
+    def doProperAction(self, device):
+        if device.mounted:
+            unmountAsk(device)
+        else:
+            mountAsk(device)
         
     def populateList(self):
         self.usblist.clearChildren()
         for dev in self.getList():
             self.usblist.addChild(USBEntry(dev, width=self.usblist.container.width, height=40, color=state.getColorPalette().getColor("background"),
-                                           onClick=self.mountAsk))
+                                           onClick=self.doProperAction))
         
     def getList(self):
         try:
