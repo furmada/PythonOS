@@ -51,7 +51,7 @@ class USBMount(object):
     def mount(self, device, loc):
         global mounted
         mounted.append(device.device)
-        device.location = os.path.join(loc, "USB"+str(len(mounted)+1))
+        device.location = os.path.join(loc, "USB"+str(len(mounted)))
         os.mkdir(device.location)
         os.system("sudo mount -t auto "+device.device+" "+device.location)
         self.populateList()
@@ -63,7 +63,7 @@ class USBMount(object):
         global mounted
         if resp == "Yes":
             mounted.remove(device.device)
-            os.system("sudo umount "+device.location)
+            os.system("sudo umount "+str(device.location))
             os.rmdir(device.location)
             self.populateList()
             
