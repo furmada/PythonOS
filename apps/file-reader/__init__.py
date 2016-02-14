@@ -28,3 +28,6 @@ def onStart(s, a):
     if app.file != None:
         loadFile(app.file)
         app.file = None
+    else:
+        state.getApplicationList().getApp("files").getModule().FilePicker((10, 10), app, width=app.ui.width-20, height=app.ui.height-20,
+                                                                          onSelect=loadFile).display()

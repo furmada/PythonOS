@@ -31,3 +31,6 @@ def onStart(s, a):
     app = a
     if app.file != None:
         loadImage(app.file)
+    else:
+        state.getApplicationList().getApp("files").getModule().FilePicker((10, 10), app, width=app.ui.width-20, height=app.ui.height-20,
+                                                                          onSelect=loadImage).display()

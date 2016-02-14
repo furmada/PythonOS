@@ -651,7 +651,17 @@ class GUI(object):
             if "surface" not in data:
                 data["surface"] = pygame.image.load(data["path"])
             self.originalSurface = data["surface"]
-            super(GUI.Image, self).__init__(position, **data)      
+            super(GUI.Image, self).__init__(position, **data)
+            
+        def setImage(self, **data):
+            if "path" in data:
+                self.path = data["path"]
+            else:
+                self.path = "surface"
+            if "surface" not in data:
+                data["surface"] = pygame.image.load(data["path"])
+            self.originalSurface = data["surface"]
+            self.refresh()
             
         def refresh(self):
             super(GUI.Image, self).refresh()
@@ -659,6 +669,42 @@ class GUI(object):
             
         def render(self, largerSurface):
             super(GUI.Image, self).render(largerSurface)
+            
+    class Slider(Component):
+        def __init__(self, position, initialPct=0, **data):
+            super(GUI.Slider, self).__init__(position, **data)
+            self.percent = initialPct
+            self.backgroundColor = data.get("backgroundColor", state.getColorPalette().getColor("background"))
+            self.color = data.get("color", state.getColorPalette().getColor("item"))
+            self.sliderColor = data.get("sliderColor", state.getColorPalette().getColor("accent"))
+            self.onChangeMethod = data.get("onChange", Application.dummy)
+            self.refresh()
+            
+        def onChange(self):
+            self.onChangeMethod(self.percent)
+            
+        def setPercent(self, percent):
+            self.percent = percent
+        
+        def refresh(self):
+            self.percentPixels = self.width / 100
+            super(GUI.Slider, self).refresh()
+            
+        def render(self, largerSurface):
+            self.surface.fill(self.backgroundColor)
+            pygame.draw.rect(self.surface, self.color, [0, self.height/4, self.width, self.height/2])
+            pygame.draw.rect(self.surface, self.sliderColor, [(self.percent*self.percentPixels)-15, 0, 30, self.height])
+            super(GUI.Slider, self).render(largerSurface)
+            
+        def checkClick(self, mouseEvent, offsetX=0, offsetY=0):
+            isClicked = super(GUI.Slider, self).checkClick(mouseEvent, offsetX, offsetY)
+            if isClicked:
+                self.percent = ((mouseEvent.pos[0] - offsetX) - 15) / self.percentPixels
+                self.onChange()
+            return isClicked
+        
+        def getPercent(self):
+            return self.percent
             
     class Button(Container):
         def __init__(self, position, text, bgColor=(20,20,20), textColor=(200,200,200), textSize=14, **data):

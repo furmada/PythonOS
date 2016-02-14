@@ -275,8 +275,8 @@ class FileExplorer(pyos.GUI.Container):
             self.appSupport.choiceDialog(subDir.absolutePath, subDir.shortPath)
             
     def navToAbs(self, path):
-        if not pyos.os.path.exists(path):
-            pyos.GUI.ErrorDialog("The path you entered does not exist or cannot be accessed.").display()
+        if not pyos.os.path.exists(path) or not pyos.os.path.isdir(path):
+            pyos.GUI.ErrorDialog("The path you entered does not exist, is not a folder, or cannot be accessed.").display()
             return
         self.path = path.replace("\\", "/")
         self.loadDir()
@@ -354,6 +354,82 @@ class FileExplorer(pyos.GUI.Container):
     def renameAsk(self, short, path):
         pyos.GUI.AskDialog("Rename", "Rename "+short+" to:", self.rename, (path,)).display()
         
+class PickerExplorer(FileExplorer):
+    def __init__(self, position, selectable="folder", startFolder="default", **data):
+        super(PickerExplorer, self).__init__(position, **data)
+        if startFolder != "default":
+            self.path = startFolder.replace("\\", "/")
+            self.loadDir()
+        self.selectable = selectable
+        self.onSelect = data.get("onSelect", pyos.Application.dummy)
+        self.onSelectData = data.get("onSelectData", ())
+            
+    def generateButtonBar(self):
+        self.buttonBar = pyos.GUI.ButtonRow((0, 0), width=self.width, height=40, color=state.getColorPalette().getColor("background"),
+                                            border=1, borderColor=state.getColorPalette().getColor("item"),
+                                            padding=0, margin=0)
+        up = pyos.GUI.Image((0,0), surface=state.getIcons().getLoadedIcon("up"), width=40, height=40,
+                            onClick=self.navUp)
+        home = pyos.GUI.Image((0,0), surface=state.getIcons().getLoadedIcon("home_dir"), width=40, height=40,
+                            onClick=self.navHome)
+        goto = pyos.GUI.Image((0,0), surface=state.getIcons().getLoadedIcon("goto"), width=40, height=40,
+                            onClick=self.navAsk, onLongClick=self.displayLocationDialog)
+        self.selectBtn = pyos.GUI.Image((0,0), surface=state.getIcons().getLoadedIcon("select"), width=40, height=40,
+                            onClick=self.selectDir)
+
+        self.buttonBar.addChild(up)
+        self.buttonBar.addChild(home)
+        self.buttonBar.addChild(goto)
+        self.buttonBar.addChild(self.selectBtn)
+        self.addChild(self.buttonBar)
+        
+    def selectDir(self):
+        if self.selectable == "folder":
+            self.onSelect(*(self.onSelectData + (self.path,)))
+        else:
+            pyos.GUI.OKDialog("File Required", "The application requires a file, not a folder.").display()
+            
+    def navToSub(self, subDir):
+        if subDir.isDir():
+            self.path = subDir.absolutePath
+            self.loadDir()
+        if subDir.isFile():
+            if subDir.absolutePath[subDir.absolutePath.rfind("."):] in self.selectable:
+                self.onSelect(*(self.onSelectData + (subDir.absolutePath,)))
+            else:
+                pyos.GUI.OKDialog("Wrong Format", "The file type "+subDir.absolutePath[subDir.absolutePath.rfind("."):]+" is not supported by the application.").display()
+        
+class FilePicker(pyos.GUI.Overlay):
+    def __init__(self, position, app, **data):
+        super(FilePicker, self).__init__(position, **data)
+        self.container.border = 1
+        self.container.borderColor = state.getColorPalette().getColor("accent")
+        self.app = app
+        self.onSelectMethod = data.get("onSelect", pyos.Application.dummy)
+        self.onSelectData = data.get("onSelectData", ())
+        self.explorer = PickerExplorer((0, 0), self.app.parameters["file"], data.get("startFolder", "default"), width=self.width, height=self.height, 
+                                       onSelect=self.onSelect)
+        self.container.addChild(self.explorer)
+        
+    def onSelect(self, path):
+        self.hide()
+        self.onSelectMethod(*(self.onSelectData + (path,)))
+        
+class FolderPicker(pyos.GUI.Overlay):
+    def __init__(self, position, **data):
+        super(FilePicker, self).__init__(position, **data)
+        self.container.border = 1
+        self.container.borderColor = state.getColorPalette().getColor("accent")
+        self.onSelectMethod = data.get("onSelect", pyos.Application.dummy)
+        self.onSelectData = data.get("onSelectData", ())
+        self.explorer = PickerExplorer((0, 0), "folder", data.get("startFolder", "default"), width=self.width, height=self.height, 
+                                       onSelect=self.onSelect)
+        self.container.addChild(self.explorer)
+        
+    def onSelect(self, path):
+        self.hide()
+        self.onSelectMethod(*(self.onSelectData + (path,)))
+        
 def onStart(s, a):
     global state, application
     state = s
@@ -363,5 +439,4 @@ def onStart(s, a):
     application.ui.addChild(explorer)
     
 def onResume():
-    print "Resumed Files"
     application.explorer.loadDir()

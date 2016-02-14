@@ -11,5 +11,6 @@
   "apps/image-viewer/": "image-viewer",
   "apps/calculator/": "calculator",
   "apps/timer/": "timer",
-  "apps/stopwatch/": "stopwatch"
+  "apps/stopwatch/": "stopwatch",
+  "apps/music-player": "music-player"
 }

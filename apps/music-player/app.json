@@ -1,0 +1,14 @@
+{
+  "name": "music-player",
+  "title": "Music",
+  "version": 1.0,
+  "author": "Adam Furman",
+  "module": "music-player",
+  "main": "run",
+  "more": {
+    "icon": "music-player.png",
+    "onStart": "onStart",
+    "colorScheme": "normal",
+    "file": [".mp3", ".ogg", ".wav"]
+  }
+}
