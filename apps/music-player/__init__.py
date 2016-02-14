@@ -59,9 +59,11 @@ class MusicPlayer(object):
         self.titleText.setText(path[path.rfind("/")+1:])
         self.playPauseBtn.setImage(path="apps/music-player/pause.png")
         self.currentSongLength = self.getCurrentSongLength()
-        print "Song is "+str(self.currentSongLength)
         pyos.pygame.mixer_music.play()
         self.playing = True
+        self.autoContinue = True
+        self.elapsed = 0
+        self.lastSkip = 0
         
     def getCurrentSongLength(self):
         snd = pyos.pygame.mixer.Sound(self.playlist[self.currentlyPlaying])
@@ -70,7 +72,6 @@ class MusicPlayer(object):
     def seekSong(self, percent):
         try:
             pyos.pygame.mixer_music.rewind()
-            print percent
             pyos.pygame.mixer_music.play(0, self.currentSongLength * (percent / 100.0))
             self.lastSkip = int(self.currentSongLength * (percent / 100.0))
             if not self.playing:
@@ -140,7 +141,7 @@ class MusicPlayer(object):
         self.screens.addPage(self.songScreen)
         
     def update(self):
-        if not self.playing and self.autoContinue:
+        if not pyos.pygame.mixer_music.get_busy() and self.autoContinue:
             if self.currentlyPlaying + 1 < len(self.playlist):
                 self.currentlyPlaying += 1
                 self.loadSong(self.playlist[self.currentlyPlaying])
@@ -149,7 +150,7 @@ class MusicPlayer(object):
             return
         if self.currentSongLength > 0 and self.playing:
             self.elapsed = (pyos.pygame.mixer_music.get_pos() / 1000)
-            self.seeker.setPercent(((self.elapsed + self.lastSkip) / self.currentSongLength))
+            self.seeker.setPercent(((self.elapsed + self.lastSkip) / self.currentSongLength)*100)
         
 def run():
     player.update()

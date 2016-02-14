@@ -462,8 +462,10 @@ class GUI(object):
             self.surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
             
         def checkClick(self, mouseEvent, offsetX=0, offsetY=0):
-            if mouseEvent.pos[0] - offsetX >= self.position[0] and mouseEvent.pos[0] - offsetX <= self.position[0] + self.width:
-                if mouseEvent.pos[1] - offsetY >= self.position[1] and mouseEvent.pos[1] - offsetY <= self.position[1] + self.height:
+            adjusted = [mouseEvent.pos[0] - offsetX, mouseEvent.pos[1] - offsetY]
+            if adjusted[0] < 0 or adjusted[1] < 0: return False
+            if adjusted[0] >= self.position[0] and adjusted[0] <= self.position[0] + self.width:
+                if adjusted[1] >= self.position[1] and adjusted[1] <= self.position[1] + self.height:
                     return True
             return False
         
@@ -508,7 +510,7 @@ class GUI(object):
                         if subCheck == None: continue
                         return subCheck
                 else:
-                    if child.checkClick(mouseEvent, offsetX, offsetY):
+                    if child.checkClick(mouseEvent, offsetX + self.position[0], offsetY + self.position[1]):
                         return child
             if self.checkClick(mouseEvent, offsetX, offsetY):
                 return self
@@ -687,7 +689,7 @@ class GUI(object):
             self.percent = percent
         
         def refresh(self):
-            self.percentPixels = self.width / 100
+            self.percentPixels = self.width / 100.0
             super(GUI.Slider, self).refresh()
             
         def render(self, largerSurface):
@@ -699,7 +701,8 @@ class GUI(object):
         def checkClick(self, mouseEvent, offsetX=0, offsetY=0):
             isClicked = super(GUI.Slider, self).checkClick(mouseEvent, offsetX, offsetY)
             if isClicked:
-                self.percent = ((mouseEvent.pos[0] - offsetX) - 15) / self.percentPixels
+                self.percent = ((mouseEvent.pos[0] - offsetX - self.position[0])) / self.percentPixels
+                if self.percent > 100.0: self.percent = 100.0
                 self.onChange()
             return isClicked
         
@@ -1059,7 +1062,7 @@ class GUI(object):
         def getClickedChild(self, mouseEvent, offsetX=0, offsetY=0):
             if not self.checkClick(mouseEvent, offsetX, offsetY):
                 return None
-            clicked = self.scrollBar.getClickedChild(mouseEvent, offsetX + self.container.width, offsetY + self.position[1])
+            clicked = self.scrollBar.getClickedChild(mouseEvent, offsetX + self.position[0], offsetY + self.position[1])
             if clicked != None: return clicked
             visible = self.getVisibleChildren()
             currChild = len(visible)
@@ -1068,16 +1071,16 @@ class GUI(object):
                 child = visible[currChild]
                 if "SKIP_CHILD_CHECK" in child.__dict__:
                     if child.SKIP_CHILD_CHECK:
-                        if child.checkClick(mouseEvent, offsetX + child.position[0] + self.position[0], offsetY + child.position[1] + self.position[1]):
+                        if child.checkClick(mouseEvent, offsetX + self.position[0], offsetY + self.position[1]):
                             return child
                         else:
                             continue
                     else:
-                        subCheck = child.getClickedChild(mouseEvent, offsetX + child.position[0] + self.position[0], offsetY + child.position[1] + self.position[1])
+                        subCheck = child.getClickedChild(mouseEvent, offsetX + self.position[0], offsetY + self.position[1])
                         if subCheck == None: continue
                         return subCheck
                 else:
-                    if child.checkClick(mouseEvent, offsetX, offsetY):
+                    if child.checkClick(mouseEvent, offsetX + self.position[0], offsetY + self.position[1]):
                         return child
             if self.checkClick(mouseEvent, offsetX, offsetY):
                 return self
@@ -1899,7 +1902,7 @@ class State(object):
                         if state.getActiveApplication() != None:
                             clickedChild = state.getActiveApplication().ui.getClickedChild(latestEvent)
                     else:
-                        clickedChild = state.getFunctionBar().container.getClickedChild(latestEvent, 0, state.getGUI().height-40)
+                        clickedChild = state.getFunctionBar().container.getClickedChild(latestEvent)
                 if clickedChild != None:
                     if isinstance(latestEvent, GUI.LongClickEvent):
                         clickedChild.onLongClick()
