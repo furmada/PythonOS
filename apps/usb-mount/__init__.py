@@ -11,7 +11,6 @@ def onStart(s, a):
     
 class USBEntry(pyos.GUI.Container):
     def __init__(self, device, **data):
-        data["onClick"] = mounter.mountAsk
         data["onClickData"] = (self,)
         super(USBEntry, self).__init__((0, 0), **data)
         self.SKIP_CHILD_CHECK = True
@@ -69,7 +68,8 @@ class USBMount(object):
     def populateList(self):
         self.usblist.clearChildren()
         for dev in self.getList():
-            self.usblist.addChild(USBEntry(dev, width=self.usblist.container.width, height=40, color=state.getColorPalette().getColor("background")))
+            self.usblist.addChild(USBEntry(dev, width=self.usblist.container.width, height=40, color=state.getColorPalette().getColor("background"),
+                                           onClick=self.mountAsk))
         
     def getList(self):
         try:
