@@ -54,7 +54,7 @@ class USBMount(object):
         device.location = os.path.join(loc, "USB"+str(len(mounted)))
         os.mkdir(device.location)
         os.system("sudo mount -t auto "+device.device+" "+device.location)
-        self.populateList()
+        self.refresh()
         
     def unmountAsk(self, dev):
         pyos.GUI.YNDialog("Unmount", "Are you sure you want to unmount "+dev.device+"?", self.unmount, (dev,)).display()
@@ -65,7 +65,7 @@ class USBMount(object):
             mounted.remove(device.device)
             os.system("sudo umount "+str(device.location))
             os.rmdir(device.location)
-            self.populateList()
+            self.refresh()
             
     def doProperAction(self, device):
         if device.mounted:
