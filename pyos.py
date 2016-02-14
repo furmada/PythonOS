@@ -363,7 +363,7 @@ class GUI(object):
             self.mouseUpTime = datetime.now()
             self.pos = self.mouseUp.pos
             
-        def checkValidLongClick(self, time=500): #Checks timestamps against parameter (in milliseconds)
+        def checkValidLongClick(self, time=250): #Checks timestamps against parameter (in milliseconds)
             delta = self.mouseUpTime - self.mouseDownTime
             return (delta.microseconds / 1000) >= time
         

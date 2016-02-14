@@ -25,12 +25,12 @@ class USBEntry(pyos.GUI.Container):
         self.addChild(self.title)
         
     def recheck(self):
-        self.clearChildren()
+        self.mounted = self.device in mounted
         if self.mounted:
-            self.title = pyos.GUI.Text((2, 8), self.device.strip("/dev/"), (100, 200, 100), 24)
+            self.title.color = (100, 200, 100)
         else:
-            self.title = pyos.GUI.Text((2, 8), self.device.strip("/dev/"), state.getColorPalette().getColor("item"), 24)
-        self.addChild(self.title)
+            self.title.color = state.getColorPalette().getColor("item")
+        self.refresh()
     
 class USBMount(object):
     def __init__(self):
