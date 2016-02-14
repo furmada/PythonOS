@@ -417,7 +417,7 @@ class FilePicker(pyos.GUI.Overlay):
         
 class FolderPicker(pyos.GUI.Overlay):
     def __init__(self, position, **data):
-        super(FilePicker, self).__init__(position, **data)
+        super(FolderPicker, self).__init__(position, **data)
         self.container.border = 1
         self.container.borderColor = state.getColorPalette().getColor("accent")
         self.onSelectMethod = data.get("onSelect", pyos.Application.dummy)
