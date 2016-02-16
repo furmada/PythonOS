@@ -53,6 +53,7 @@ class MusicPlayer(object):
         self.autoContinue = False
         
     def loadSong(self, path):
+        state.getGUI().displayStandbyText("Loading song")
         self.screens.goToPage()
         self.currentlyPlaying = self.playlist.index(path)
         pyos.pygame.mixer_music.load(path)

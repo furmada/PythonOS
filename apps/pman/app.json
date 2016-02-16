@@ -1,0 +1,13 @@
+{
+  "name": "pman",
+  "title": "Software",
+  "version": 1.0,
+  "author": "Adam Furman",
+  "module": "pman",
+  "main": "run",
+  "more": {
+    "icon": "pman.png",
+    "onStart": "onStart",
+    "colorScheme": "normal"
+  }
+}

@@ -9,5 +9,6 @@
     "icon": "about.png",
     "onStart": "onStart",
     "colorScheme": "dark"
-  }
+  },
+  "description": "Provides information about Python OS 6"
 }

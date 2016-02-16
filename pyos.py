@@ -116,15 +116,24 @@ class TimedTask(Task):
             
 class ParallelTask(Task):
     #Warning: This starts a new thread.
+    def __init__(self, method, *additionalData):
+        super(ParallelTask, self).__init__(method, *additionalData)
+        self.ran = False
+    
     def run(self):
-        start_new_thread(self.method, self.additionalData)
+        if not self.ran:
+            start_new_thread(self.runHelper, ())
+            self.ran = True
         
     def getReturn(self):
         return None
     
+    def runHelper(self):
+        self.method(*self.additionalData)
+        self.setStop()
+    
     def setStop(self):
-        super(Task, self).setStop()
-        print "SetStop was called on a ParallelTask. The thread did not stop."
+        super(ParallelTask, self).setStop()
                 
 class Controller(object):
     def __init__(self):
@@ -215,6 +224,11 @@ class GUI(object):
             if self.update_interval > 10:
                 self.update_interval -= 1
     
+    def displayStandbyText(self, text="Stand by...", size=20, color=(20,20,20), bgcolor=(100, 100, 200)):
+        pygame.draw.rect(screen, bgcolor, [0, ((state.getGUI().height - 40)/2) - size, state.getGUI().width, 2*size])
+        screen.blit(state.getFont().get(size).render(text, 1, color), (5, ((state.getGUI().height - 40)/2) - size+(size/4)))
+        pygame.display.flip()
+    
     @staticmethod
     def getCenteredCoordinates(component, larger):
         return [(larger.width / 2) - (component.width / 2), (larger.height / 2) - (component.height / 2)]
@@ -252,7 +266,9 @@ class GUI(object):
                      "home_dir": "files_home.png",
                      "move": "files_move.png",
                      "select": "files_select.png",
-                     "up": "files_up.png"
+                     "up": "files_up.png",
+                     "back": "back.png",
+                     "forward": "forward.png"
                      }
         
         def getIcons(self):

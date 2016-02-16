@@ -11,6 +11,7 @@ def lines(data):
     return count
 
 def loadFile(path):
+    state.getGUI().displayStandbyText("Loading file")
     f = open(path, "rU")
     contents = str(f.read())
     lnCount = lines(contents)

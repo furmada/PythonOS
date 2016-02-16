@@ -1,6 +1,7 @@
 import pyos
 
 def loadImage(path):
+    state.getGUI().displayStandbyText("Loading image")
     img = None
     try:
         img = pyos.pygame.image.load(path)

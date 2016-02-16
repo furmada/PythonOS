@@ -9,5 +9,6 @@
     "icon": "calculator.png",
     "onStart": "onStart",
     "colorScheme": "dark"
-  }
+  },
+  "description": "A fully functional, multi-functional calculator.\n Performs basic operations\n Stores last answer\n Performs any root\n Supports long expressions using parentheses."
 }
