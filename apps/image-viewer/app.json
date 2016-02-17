@@ -9,6 +9,7 @@
     "icon": "image-viewer.png",
     "onStart": "onStart",
     "colorScheme": "dark",
-    "file": [".png", ".jpg", ".jpeg", ".bmp", ".gif", ".pcx", ".tga", ".tif"]
-  }
+    "file": [ ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".pcx", ".tga", ".tif" ]
+  },
+  "description": "Opens and views image files. Automatically resizes and rotates them for best fit to the screen."
 }

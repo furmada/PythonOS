@@ -10,5 +10,6 @@
     "onStart": "onStart",
     "onResume": "onResume",
     "colorScheme": "normal"
-  }
+  },
+  "description": "A simple clock app. Displays the time and date, including seconds. Tap the time to change 24hr to 12hr format."
 }

@@ -930,7 +930,7 @@ class GUI(object):
             
         def removeChild(self, component):
             self.pages[self.currentPage].removeChild(component)
-            childrenCopy = self.self.pages[self.currentPage].childComponents[:]
+            childrenCopy = self.pages[self.currentPage].childComponents[:]
             for page in self.pages:
                 for child in page.childComponents:
                     page.removeChild(child)
@@ -1006,6 +1006,12 @@ class GUI(object):
             component.setPosition([self.padding, componentHeight])
             self.getLastPage().addChild(component)
             component.refresh()
+            
+        def removeChild(self, component):
+            super(GUI.ListPagedContainer, self).removeChild(component)
+            if self.pages[0].childComponents == []:
+                self.removePage(0)
+                self.goToPage()
             
     class ButtonRow(Container):
         def __init__(self, position, **data):

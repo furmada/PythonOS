@@ -23,6 +23,16 @@ def fetchJSON(url):
     except:
         return None
     
+def fetchPackage(app):
+    try:
+        pkgdata = urllib2.urlopen(REPOSITORY+pman.repoPath+app+"/"+app+".zip")
+        pktf = open("temp/pmanTmpPkg.zip", "wb")
+        pktf.write(pkgdata.read())
+        pktf.close()
+        return "tmp/pmanTmpPkg.zip"
+    except:
+        return None
+    
 def getIcon(app):
     try:
         icdata = urllib2.urlopen(REPOSITORY+pman.repoPath+app+"/icon.png")
@@ -89,7 +99,8 @@ class MainPage(Page):
                 self.featuredContainer.addChild(pyos.GUI.Image((0, 0), surface=getIcon(self.applist["featured"]), width=80, height=80))
                 self.featuredContainer.addChild(pyos.GUI.Text((82, 0), featured_data["title"], (20, 20, 20), 24))
                 self.featuredContainer.addChild(pyos.GUI.Text((82, 26), featured_data["author"], (20, 20, 20), 14))
-                self.featuredContainer.addChild(pyos.GUI.Text((2, 88), "Ver.: "+str(featured_data["version"]), (20, 20, 20), 14))
+                self.featuredContainer.addChild(pyos.GUI.Text((2, 82), "Ver.: "+str(featured_data["version"]), (20, 20, 20), 14))
+                self.featuredContainer.addChild(pyos.GUI.Text((2, 100), "Featured App", (200, 50, 50), 14))
                 self.featuredContainer.addChild(pyos.GUI.MultiLineText((82, 40), featured_data.get("description", "No Description")[:featured_data.get("description", "No Description").find(".")], (20, 20, 20), 14,
                                                                        width=self.width-82, height=80))
                 self.addChild(self.featuredContainer)
@@ -100,19 +111,28 @@ class MainPage(Page):
                 self.allAppsLink.addChild(pyos.GUI.Text((2, 6), "All Apps", (200, 200, 200), 24))
                 self.addChild(self.allAppsLink)
                 
+                self.updatesLink = pyos.GUI.Container((0, 160), width=self.width, height=40, color=(20, 150, 20),
+                                                      onClick=self.loadUpdates)
+                self.updatesLink.SKIP_CHILD_CHECK = True
+                self.updatesLink.addChild(pyos.GUI.Text((2, 6), "Updates", (200, 200, 200), 24))
+                self.addChild(self.updatesLink)
+                
     def reset(self):
         self = MainPage(self.width, self.height, self.backgroundColor)
         
     def loadAllApps(self):
         pman.openPage(AppListPage("All Apps", self.applist["apps"], self.width, self.height, self.backgroundColor))
+        
+    def loadUpdates(self):
+        pman.openPage(UpdateListPage("Updates", self.width, self.height, self.backgroundColor))
                 
 class AppListPage(Page):    
     def __init__(self, title, alist, w, h, c):
         super(AppListPage, self).__init__(w, h, c)
         self.title = title
-        self.pages = pyos.GUI.ListPagedContainer((0, 0), width=self.width, height=self.height, color=self.backgroundColor)
+        self.pages = pyos.GUI.ListPagedContainer((0, 0), width=self.width, height=self.height, color=self.backgroundColor, margin=0)
         toload = []
-        for a in alist:
+        for a in sorted(alist):
             container = pyos.GUI.Container((0, 0), width=self.width, height=40, color=self.backgroundColor, border=1, borderColor=(20, 20, 20))
             icon = pyos.GUI.Image((0, 0), surface=state.getIcons().getLoadedIcon("unknown"), width=40, height=40,
                                   onClick=AppPage.addAppPage, onClickData=(a,))
@@ -124,13 +144,17 @@ class AppListPage(Page):
             if a in pman.installedApps:
                 inst_btn = pyos.GUI.Button((container.width-60, 0), "Open", (100, 250, 100), (20, 20, 20), 18, width=60, height=40,
                                               onClick=state.getApplicationList().getApp(a).activate)
+                localApp = state.getApplicationList().getApp(a)
+                icon.setImage(surface=localApp.getIcon())
+                title.setText(localApp.title)
+                author.setText(localApp.author)
             else:
                 inst_btn = pyos.GUI.Button((container.width-60, 0), "Install", (100, 100, 250), (20, 20, 20), 18, width=60, height=40)
+                toload.append([a, title, author, icon])
             container.addChild(icon)
             container.addChild(title)
             container.addChild(author)
             container.addChild(inst_btn)
-            toload.append([a, title, author, icon])
             self.pages.addChild(container)
         self.addChild(self.pages)
         self.pages.goToPage()
@@ -144,6 +168,58 @@ class AppListPage(Page):
             item[2].setText(manifest["author"])
         for item in toload:
             item[3].setImage(surface=getIcon(item[0]))
+            
+class UpdateListPage(Page):    
+    def __init__(self, title, w, h, c):
+        super(UpdateListPage, self).__init__(w, h, c)
+        self.title = title
+        self.scroller = pyos.GUI.ListScrollableContainer((0, 0), width=self.width, height=self.height, color=self.backgroundColor, scrollAmount=40)
+        toload = []
+        for a in [a.name for a in state.getApplicationList().getApp("launcher").getModule().alphabetize(state.getApplicationList().getApplicationList())]:
+            container = pyos.GUI.Container((0, 0), width=self.scroller.container.width, height=40, color=self.backgroundColor, border=1, borderColor=(20, 20, 20))
+            icon = pyos.GUI.Image((0, 0), surface=state.getIcons().getLoadedIcon("unknown"), width=40, height=40,
+                                  onClick=AppPage.addAppPage, onClickData=(a,))
+            title = pyos.GUI.Text((42, 0), "Application", state.getColorPalette().getColor("item"), 24,
+                                  onClick=AppPage.addAppPage, onClickData=(a,))
+            author = pyos.GUI.Text((42, 24), "Author", (20, 20, 20), 14,
+                                   onClick=AppPage.addAppPage, onClickData=(a,))
+            inst_btn = pyos.GUI.Button((container.width-60, 0), "Latest", (100, 250, 100), (20, 20, 20), 18, width=60, height=40,
+                                          onClick=state.getApplicationList().getApp(a).activate)
+            localApp = state.getApplicationList().getApp(a)
+            try:
+                icon.setImage(surface=localApp.getIcon())
+            except:
+                icon.setImage(surface=state.getIcons().getLoadedIcon("unknown"))
+            title.setText(localApp.title)
+            author.setText(localApp.author)
+            toload.append([a, container, title, author, icon, inst_btn])
+            container.addChild(icon)
+            container.addChild(title)
+            container.addChild(author)
+            container.addChild(inst_btn)
+            self.scroller.addChild(container)
+        self.addChild(self.scroller)
+        loadTask = pyos.ParallelTask(self.loadList, toload)
+        state.getThreadController().addThread(loadTask)
+
+    def loadList(self, toload):
+        newOrder = []
+        for item in toload:
+            manifest = AppPage.getAppInfo(item[0])
+            if manifest == None:
+                continue
+            localApp = state.getApplicationList().getApp(item[0])
+            if manifest["version"] > localApp.version:
+                item[2].setText(manifest["title"])
+                item[3].setText(manifest["author"])
+                item[5].backgroundColor = (100, 100, 250)
+                item[5].setText("Update")
+                newOrder.append(item[1])
+            else:
+                newOrder.insert(0, item[1])
+        self.scroller.clearChildren()
+        for child in newOrder:
+            self.scroller.addChild(child)
     
 class PackageManager(object):
     def __init__(self):
@@ -184,4 +260,29 @@ class PackageManager(object):
             self.pageContainer.clearChildren()
             self.pageContainer.addChild(self.pageHistory[len(self.pageHistory)-1])
             self.titleText.setText(self.pageHistory[len(self.pageHistory)-1].title)
+            
+    @staticmethod
+    def installAsk(app):
+        pyos.GUI.YNDialog("Install", "Are you sure you want to install the package "+app+" on your device?", PackageManager.install, (app,)).display()
+        
+    @staticmethod
+    def installThread(app):
+        package = fetchPackage(app)
+        if package == None:
+            pyos.GUI.ErrorDialog("Could not fetch the package.").display()
+            return
+        try:
+            pyos.Application.install(package)
+        except:
+            pyos.GUI.ErrorDialog("Error while installing the package.").display()
+            return
+        pyos.GUI.OKDialog("Finished", "Application has been installed.").display()
+        
+    @staticmethod
+    def install(app, resp):
+        if resp == "Yes":
+            task = pyos.ParallelTask(PackageManager.installThread, (app,))
+            state.getThreadController().addThread(task)
+            
+                
             

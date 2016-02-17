@@ -6,9 +6,10 @@
   "module": "file-reader",
   "main": "run",
   "more": {
-  	"icon": "file-reader.png",
+    "icon": "file-reader.png",
     "onStart": "onStart",
     "colorScheme": "light",
-    "file": [".txt", ".htm", ".html", ".py", ".pyw", ".json", ".md"]
-  }
+    "file": [ ".txt", ".htm", ".html", ".py", ".pyw", ".json", ".md" ]
+  },
+  "description": "Opens and reads plain text format files."
 }
