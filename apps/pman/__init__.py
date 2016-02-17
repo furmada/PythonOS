@@ -1,7 +1,7 @@
 import pyos
 import urllib2
 
-REPOSITORY = "http://www.github.com/furmada/PythonOSApps/raw/gh-pages/"
+REPOSITORY = "https://raw.githubusercontent.com/furmada/PythonOSApps/gh-pages/"
 
 def onStart(s, a):
     global state, app, pman
@@ -18,7 +18,8 @@ def internet_on():
 
 def fetchJSON(url):
     try:
-        text = urllib2.urlopen(REPOSITORY+url).read()
+        resource = urllib2.urlopen(REPOSITORY+url)
+        text = str(unicode(resource.read(), errors="ignore"))
         return pyos.json.loads(text)
     except:
         return None
@@ -116,6 +117,8 @@ class MainPage(Page):
                 self.updatesLink.SKIP_CHILD_CHECK = True
                 self.updatesLink.addChild(pyos.GUI.Text((2, 6), "Updates", (200, 200, 200), 24))
                 self.addChild(self.updatesLink)
+            else:
+                pyos.GUI.ErrorDialog("Unable to load the repository manifest.").display()
                 
     def reset(self):
         self = MainPage(self.width, self.height, self.backgroundColor)
@@ -149,7 +152,8 @@ class AppListPage(Page):
                 title.setText(localApp.title)
                 author.setText(localApp.author)
             else:
-                inst_btn = pyos.GUI.Button((container.width-60, 0), "Install", (100, 100, 250), (20, 20, 20), 18, width=60, height=40)
+                inst_btn = pyos.GUI.Button((container.width-60, 0), "Install", (100, 100, 250), (20, 20, 20), 18, width=60, height=40,
+                                           onClick=PackageManager.installAsk, onClickData=(a,))
                 toload.append([a, title, author, icon])
             container.addChild(icon)
             container.addChild(title)
@@ -214,6 +218,8 @@ class UpdateListPage(Page):
                 item[3].setText(manifest["author"])
                 item[5].backgroundColor = (100, 100, 250)
                 item[5].setText("Update")
+                item[5].eventBindings["onClick"] = PackageManager.installAsk
+                item[5].eventData["onClick"] = (item[0],)
                 newOrder.append(item[1])
             else:
                 newOrder.insert(0, item[1])
