@@ -1,5 +1,6 @@
 import pyos
 import urllib2
+from urllib import urlretrieve
 
 REPOSITORY = "https://raw.githubusercontent.com/furmada/PythonOSApps/gh-pages/"
 
@@ -26,20 +27,15 @@ def fetchJSON(url):
     
 def fetchPackage(app):
     try:
-        pkgdata = urllib2.urlopen(REPOSITORY+pman.repoPath+app+"/"+app+".zip")
-        pktf = open("temp/pmanTmpPkg.zip", "wb")
-        pktf.write(pkgdata.read())
-        pktf.close()
-        return "tmp/pmanTmpPkg.zip"
+        urlretrieve(REPOSITORY+pman.repoPath+app+"/"+app+".zip", "temp/pmanTmpPkg.zip")
+        return "temp/pmanTmpPkg.zip"
     except:
+        print "Error accessing "+REPOSITORY+pman.repoPath+app+"/"+app+".zip"
         return None
     
 def getIcon(app):
     try:
-        icdata = urllib2.urlopen(REPOSITORY+pman.repoPath+app+"/icon.png")
-        ictf = open("temp/pmanTmpIcon.png", "wb")
-        ictf.write(icdata.read())
-        ictf.close()
+        urlretrieve(REPOSITORY+pman.repoPath+app+"/icon.png", "temp/pmanTmpIcon.png")
         return pyos.pygame.image.load("temp/pmanTmpIcon.png")
     except:
         print "Error accessing "+REPOSITORY+pman.repoPath+app+"/icon.png"
@@ -74,7 +70,8 @@ class AppPage(Page):
             self.installBtn = pyos.GUI.Button((self.width-80, 80), "Open", (100, 250, 100), (20, 20, 20), 24, width=80, height=40,
                                               onClick=state.getApplicationList().getApp(self.manifest["name"]).activate)
         else:
-            self.installBtn = pyos.GUI.Button((self.width-80, 80), "Install", (100, 100, 250), (20, 20, 20), 24, width=80, height=40)
+            self.installBtn = pyos.GUI.Button((self.width-80, 80), "Install", (100, 100, 250), (20, 20, 20), 24, width=80, height=40,
+                                              onClick=PackageManager.installAsk, onClickData=(app,))
         self.addChild(self.installBtn)
         self.addChild(pyos.GUI.MultiLineText((2, 120), self.manifest.get("description", "No Description"), (20, 20, 20), 14,
                                             width=self.width-4, height=self.height-20))
@@ -282,12 +279,15 @@ class PackageManager(object):
         except:
             pyos.GUI.ErrorDialog("Error while installing the package.").display()
             return
-        pyos.GUI.OKDialog("Finished", "Application has been installed.").display()
+        state.getApplicationList().reloadList()
+        state.getNotificationQueue().push(pyos.Notification("App Installed", "Installed "+app, 
+                                                            source=state.getApplicationList().getApp(app),
+                                                            image=state.getApplicationList().getApp(app).getIcon()))
         
     @staticmethod
     def install(app, resp):
         if resp == "Yes":
-            task = pyos.ParallelTask(PackageManager.installThread, (app,))
+            task = pyos.ParallelTask(PackageManager.installThread, app)
             state.getThreadController().addThread(task)
             
                 

@@ -1,18 +1,1 @@
-{
-  "apps/launcher/": "launcher",
-  "apps/home/": "home",
-  "apps/state-shell/": "state-shell",
-  "apps/quit/": "quit",
-  "apps/task-manager/": "task-manager",
-  "apps/files/": "files",
-  "apps/about/": "about",
-  "apps/file-reader/": "file-reader",
-  "apps/clock/": "clock",
-  "apps/image-viewer/": "image-viewer",
-  "apps/calculator/": "calculator",
-  "apps/timer/": "timer",
-  "apps/stopwatch/": "stopwatch",
-  "apps/music-player/": "music-player",
-  "apps/usb-mount/": "usb-mount",
-  "apps/pman/": "pman"
-}
+{"apps/launcher/": "launcher", "apps/usb-mount/": "usb-mount", "apps/quit/": "quit", "apps/pman/": "pman", "apps/timer/": "timer", "apps/stopwatch/": "stopwatch", "apps/about/": "about", "apps/home/": "home", "apps/file-reader/": "file-reader", "apps/image-viewer/": "image-viewer", "apps/state-shell/": "state-shell", "apps/files/": "files", "apps/music-player/": "music-player", "apps/clock/": "clock", "apps/calculator/": "calculator", "apps/task-manager/": "task-manager"}

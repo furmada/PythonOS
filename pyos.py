@@ -1377,7 +1377,7 @@ class GUI(object):
             self.response = response
             self.hide()
             if self.onResponseRecorded != None:
-                self.onResponseRecorded(*(self.onResponseRecordedData)+(self.response,))
+                self.onResponseRecorded(*((self.onResponseRecordedData)+(self.response,)))
             
     class OKCancelDialog(Dialog):
         def __init__(self, title, text, onResponseRecorded=None, onResponseRecordedData=()):
@@ -1392,7 +1392,7 @@ class GUI(object):
             self.response = response
             self.hide()
             if self.onResponseRecorded != None:
-                self.onResponseRecorded(*(self.onResponseRecordedData)+(self.response,))
+                self.onResponseRecorded(*((self.onResponseRecordedData)+(self.response,)))
             
     class AskDialog(Dialog):
         def __init__(self, title, text, onResposeRecorded=None, onResponseRecordedData=()):
@@ -1414,7 +1414,7 @@ class GUI(object):
             self.response = response
             self.hide()
             if self.onResponseRecorded != None:
-                self.onResponseRecorded(*(self.onResponseRecordedData)+(self.response,))
+                self.onResponseRecorded(*((self.onResponseRecordedData)+(self.response,)))
             
     class CustomContentDialog(Dialog):
         def __init__(self, title, customComponent, actionButtons, onResponseRecorded=None):
@@ -1595,7 +1595,7 @@ class Application(object):
     def install(packageloc):
         package = ZipFile(packageloc, "r")
         package.extract("app.json", "temp/")
-        app_listing = open("app.json", "rU")
+        app_listing = open("temp/app.json", "rU")
         app_info = json.load(app_listing)
         app_listing.close()
         app_name = str(app_info.get("name"))
@@ -1607,10 +1607,10 @@ class Application(object):
         listingsfile = open("apps/apps.json", "w")
         json.dump(alist, listingsfile)
         listingsfile.close()
-        return Application(os.path.join("apps/", app_name))
     
     def __init__(self, location):
         self.parameters = {}
+        self.location = location
         infofile = open(os.path.join(location, "app.json"), "rU")
         app_data = json.load(infofile)
         self.name = str(app_data.get("name"))
@@ -1739,6 +1739,15 @@ class ApplicationList(object):
     def getPreviousActive(self):
         if len(self.activeApplications) > 1:
             return self.activeApplications[1]
+        
+    def reloadList(self):
+        applist = Application.getListings()
+        for key in dict(applist).keys():
+            if applist.get(key) not in self.applications.keys():
+                self.applications[applist.get(key)] = Application(key)
+        for key in self.applications.keys():
+            if key not in applist.values():
+                del self.applications[key]
         
 class Notification(object):
     def __init__(self, title, text, **data):
