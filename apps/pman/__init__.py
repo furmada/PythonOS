@@ -114,6 +114,12 @@ class MainPage(Page):
                 self.updatesLink.SKIP_CHILD_CHECK = True
                 self.updatesLink.addChild(pyos.GUI.Text((2, 6), "Updates", (200, 200, 200), 24))
                 self.addChild(self.updatesLink)
+                
+                self.localLink = pyos.GUI.Container((0, 200), width=self.width, height=40, color=(20, 20, 150),
+                                                      onClick=self.installPkgLocAsk)
+                self.localLink.SKIP_CHILD_CHECK = True
+                self.localLink.addChild(pyos.GUI.Text((2, 6), "Install from File", (200, 200, 200), 24))
+                self.addChild(self.localLink)
             else:
                 pyos.GUI.ErrorDialog("Unable to load the repository manifest.").display()
                 
@@ -125,6 +131,10 @@ class MainPage(Page):
         
     def loadUpdates(self):
         pman.openPage(UpdateListPage("Updates", self.width, self.height, self.backgroundColor))
+        
+    def installPkgLocAsk(self):
+        state.getApplicationList().getApp("files").getModule().FilePicker((10, 10), app, width=app.ui.width-20, height=app.ui.height-20,
+                                                                          onSelect=PackageManager.installLocalAsk).display()
                 
 class AppListPage(Page):    
     def __init__(self, title, alist, w, h, c):
@@ -263,6 +273,25 @@ class PackageManager(object):
             self.pageContainer.clearChildren()
             self.pageContainer.addChild(self.pageHistory[len(self.pageHistory)-1])
             self.titleText.setText(self.pageHistory[len(self.pageHistory)-1].title)
+            
+    @staticmethod
+    def installLocalAsk(pkgloc):
+        pyos.GUI.YNDialog("Install", "Are you sure you wish to install an application from the local package "+pkgloc[pkgloc.rfind("/")+1:]+"?",
+                          PackageManager.installLocal, (pkgloc,)).display()
+                          
+    @staticmethod
+    def installLocal(pkgloc, resp):
+        if resp != "Yes": return
+        app = ""
+        try:
+            app = pyos.Application.install(pkgloc)
+        except:
+            pyos.GUI.ErrorDialog("Error while installing the package.").display()
+            return
+        state.getApplicationList().reloadList()
+        state.getNotificationQueue().push(pyos.Notification("App Installed", "Installed "+app, 
+                                                            source=state.getApplicationList().getApp(app),
+                                                            image=state.getApplicationList().getApp(app).getIcon()))
             
     @staticmethod
     def installAsk(app):

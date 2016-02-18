@@ -8,6 +8,7 @@
   "more": {
     "icon": "pman.png",
     "onStart": "onStart",
-    "colorScheme": "normal"
+    "colorScheme": "normal",
+    "file": [".zip"]
   }
 }

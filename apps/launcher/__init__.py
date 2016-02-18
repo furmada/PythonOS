@@ -23,7 +23,7 @@ def uninstall(app, resp):
         state.getApplicationList().reloadList()
         application.ui.clearChildren()
         loadApps(state, application)
-        state.getNotificationQueue().push(pyos.Notification("Uninstalled", "The app "+app.title+" is gone.", icon=state.getIcons().getLoadedIcon("menu")))
+        state.getNotificationQueue().push(pyos.Notification("Uninstalled", "The app "+app.title+" is gone.", image=state.getIcons().getLoadedIcon("menu")))
 
 def loadApps(pstate, app):
     global application, state

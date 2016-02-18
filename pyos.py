@@ -1607,6 +1607,7 @@ class Application(object):
         listingsfile = open("apps/apps.json", "w")
         json.dump(alist, listingsfile)
         listingsfile.close()
+        return app_name
     
     def __init__(self, location):
         self.parameters = {}
