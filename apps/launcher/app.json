@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "launcher",
   "title": "Launcher",
   "version": 1.0,
@@ -10,5 +10,6 @@
     "onStart": "loadApps",
     "persist": false,
     "colorScheme": "light"
-  }
+  },
+  "description": "The standard application launcher. Apps highlighted in blue are running. Long click to uninstall."
 }

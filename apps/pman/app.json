@@ -10,5 +10,6 @@
     "onStart": "onStart",
     "colorScheme": "normal",
     "file": [".zip"]
-  }
+  },
+  "description": "Manage, install, and update packages. This application requires an Internet connection."
 }

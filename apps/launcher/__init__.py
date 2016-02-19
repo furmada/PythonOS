@@ -15,6 +15,9 @@ def getVisibleAppList():
     return visible
 
 def uninstallAsk(app):
+    if app in state.getApplicationList().activeApplications:
+        pyos.GUI.WarningDialog("The app "+app.title+" cannot be uninstalled because it is currently running.").display()
+        return
     pyos.GUI.YNDialog("Uninstall", "Are you sure you wish to permanently uninstall "+app.title+"?", uninstall, (app,)).display()
     
 def uninstall(app, resp):

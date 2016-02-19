@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "music-player",
   "title": "Music",
   "version": 1.0,
@@ -10,5 +10,6 @@
     "onStart": "onStart",
     "colorScheme": "normal",
     "file": [".mp3", ".ogg", ".wav"]
-  }
+  },
+  "description": "Play music files. Add files to the playlist on the second page. Skip, play, pause and stop."
 }

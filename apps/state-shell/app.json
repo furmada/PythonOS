@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "state-shell",
   "title": "State Shell",
   "version": 1.0,
@@ -9,5 +9,6 @@
     "icon": "state-shell.png",
     "onStart": "onStart",
     "colorScheme": "dark"
-  }
+  },
+  "description": "A debugging app. Allows access to the state variable."
 }

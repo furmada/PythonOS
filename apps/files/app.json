@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "files",
   "title": "Files",
   "version": 1.0,
@@ -10,5 +10,6 @@
     "onStart": "onStart",
     "onResume": "onResume",
     "colorScheme": "normal"
-  }
+  },
+  "description": "A powerful file manager. Move, copy, delete, rename, and open files and folders. Create a new folder by long pressing the background."
 }

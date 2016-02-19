@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "home",
   "title": "Home",
   "version": 1.0,
@@ -10,5 +10,6 @@
     "onStart": "onLoad",
     "onStop": "onUnload",
     "onPause": "onUnload"
-  }
+  },
+  "description": "The Python OS homescreen. Contains a link to State Shell."
 }

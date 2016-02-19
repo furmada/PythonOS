@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "quit",
   "title": "Quit",
   "version": 1.0,
@@ -10,5 +10,6 @@
     "onStart": "onLoad",
     "colorScheme": "normal",
     "persist": false
-  }
+  },
+  "description": "Provides a simple way to quit Python OS."
 }

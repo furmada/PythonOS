@@ -1,0 +1,14 @@
+{
+  "name": "test",
+  "title": "Test",
+  "version": 1.0,
+  "author": "Adam Furman",
+  "module": "test",
+  "main": "run",
+  "more": {
+    "icon": "unknown.png",
+    "onStart": "onStart",
+    "colorScheme": "dark"
+  },
+  "description": "This app is used to test the package manager. It performs no function."
+}

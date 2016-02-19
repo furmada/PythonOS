@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "timer",
   "title": "Timer",
   "version": 1.0,
@@ -12,5 +12,6 @@
     "onPause": "setNotification",
     "onStop": "setNotification",
     "colorScheme": "normal"
-  }
+  },
+  "description": "A timer application. Set minutes and seconds. The timer continues even when the app is not active."
 }

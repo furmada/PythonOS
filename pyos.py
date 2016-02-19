@@ -268,7 +268,8 @@ class GUI(object):
                      "select": "files_select.png",
                      "up": "files_up.png",
                      "back": "back.png",
-                     "forward": "forward.png"
+                     "forward": "forward.png",
+                     "search": "search.png"
                      }
         
         def getIcons(self):
@@ -1613,7 +1614,7 @@ class Application(object):
         self.parameters = {}
         self.location = location
         infofile = open(os.path.join(location, "app.json"), "rU")
-        app_data = json.load(infofile)
+        app_data = json.loads(str(unicode(infofile.read(), errors="ignore")))
         self.name = str(app_data.get("name"))
         self.title = str(app_data.get("title"))
         self.version = float(app_data.get("version"))

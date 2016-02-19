@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "stopwatch",
   "title": "Stopwatch",
   "version": 1.0,
@@ -10,5 +10,6 @@
     "onStart": "onStart",
     "onResume": "onResume",
     "colorScheme": "dark"
-  }
+  },
+  "description": "A fully-functional stopwatch. Stop, start, and count laps with 1/100sec precision."
 }

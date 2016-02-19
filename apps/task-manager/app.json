@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "task-manager",
   "title": "Tasks",
   "version": 1.0,
@@ -9,5 +9,6 @@
     "onStart": "onLoad",
     "onResume": "loadList",
     "colorScheme": "normal"
-  }
+  },
+  "description": "Access and control running applications. Use caution, this can potentially cause data loss."
 }

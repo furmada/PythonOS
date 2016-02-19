@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "usb-mount",
   "title": "USB Mount",
   "version": 1.0,
@@ -9,5 +9,6 @@
     "icon": "usb-mount.png",
     "onStart": "onStart",
     "colorScheme": "dark"
-  }
+  },
+  "description": "Allows the mounting/unmounting of USB devices. Scans the /dev/ folder. Mounts to docs/USBX."
 }

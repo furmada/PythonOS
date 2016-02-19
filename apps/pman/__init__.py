@@ -1,6 +1,7 @@
 import pyos
 import urllib2
 from urllib import urlretrieve
+from apps.pman.fuzzywuzzy import fuzz
 
 REPOSITORY = "https://raw.githubusercontent.com/furmada/PythonOSApps/gh-pages/"
 
@@ -103,11 +104,13 @@ class MainPage(Page):
                                                                        width=self.width-82, height=80))
                 self.addChild(self.featuredContainer)
                 
-                self.allAppsLink = pyos.GUI.Container((0, 120), width=self.width, height=40, color=(20, 20, 20),
+                self.allAppsLink = pyos.GUI.Container((0, 120), width=self.width-40, height=40, color=(20, 20, 20),
                                                       onClick=self.loadAllApps)
                 self.allAppsLink.SKIP_CHILD_CHECK = True
                 self.allAppsLink.addChild(pyos.GUI.Text((2, 6), "All Apps", (200, 200, 200), 24))
                 self.addChild(self.allAppsLink)
+                self.addChild(pyos.GUI.Image((self.width-40, self.allAppsLink.position[1]), surface=state.getIcons().getLoadedIcon("search"),
+                                                         onClick=self.appSearchAsk))
                 
                 self.updatesLink = pyos.GUI.Container((0, 160), width=self.width, height=40, color=(20, 150, 20),
                                                       onClick=self.loadUpdates)
@@ -135,14 +138,37 @@ class MainPage(Page):
     def installPkgLocAsk(self):
         state.getApplicationList().getApp("files").getModule().FilePicker((10, 10), app, width=app.ui.width-20, height=app.ui.height-20,
                                                                           onSelect=PackageManager.installLocalAsk).display()
+                                                                          
+    def appSearchAsk(self):
+        pyos.GUI.AskDialog("Search", "Enter the package name to search for.", self.appSearch).display()
+        
+    def appSearch(self, query):
+        results = []
+        for a in pman.repoApps:
+            ratio = fuzz.ratio(a, query)
+            if ratio <= 50: continue
+            if len(results) == 0 or ratio > results[0][1]:
+                results.insert(0, [a, ratio])
+            else:
+                if ratio == results[0][1]:
+                    results.insert(1, [a, ratio])
+                else:
+                    results.append([a, ratio])
+        if results != []:
+            pman.openPage(AppListPage("Search: "+query, [a[0] for a in results], self.width, self.height, self.backgroundColor, False))
+        else:
+            pyos.GUI.OKDialog("No Results", "Your search returned no relevant results.").display()
                 
 class AppListPage(Page):    
-    def __init__(self, title, alist, w, h, c):
+    def __init__(self, title, alist, w, h, c, alpha=True):
         super(AppListPage, self).__init__(w, h, c)
         self.title = title
         self.pages = pyos.GUI.ListPagedContainer((0, 0), width=self.width, height=self.height, color=self.backgroundColor, margin=0)
         toload = []
-        for a in sorted(alist):
+        listToUse = []
+        if alpha: listToUse = sorted(alist)
+        else: listToUse = alist
+        for a in listToUse:
             container = pyos.GUI.Container((0, 0), width=self.width, height=40, color=self.backgroundColor, border=1, borderColor=(20, 20, 20))
             icon = pyos.GUI.Image((0, 0), surface=state.getIcons().getLoadedIcon("unknown"), width=40, height=40,
                                   onClick=AppPage.addAppPage, onClickData=(a,))
@@ -155,7 +181,9 @@ class AppListPage(Page):
                 inst_btn = pyos.GUI.Button((container.width-60, 0), "Open", (100, 250, 100), (20, 20, 20), 18, width=60, height=40,
                                               onClick=state.getApplicationList().getApp(a).activate)
                 localApp = state.getApplicationList().getApp(a)
-                icon.setImage(surface=localApp.getIcon())
+                icn = localApp.getIcon()
+                if icn == False: icn = state.getIcons().getLoadedIcon("unknown")
+                icon.setImage(surface=icn)
                 title.setText(localApp.title)
                 author.setText(localApp.author)
             else:
@@ -318,6 +346,7 @@ class PackageManager(object):
         if resp == "Yes":
             task = pyos.ParallelTask(PackageManager.installThread, app)
             state.getThreadController().addThread(task)
+            pman.closeCurrentPage()
             
                 
             
