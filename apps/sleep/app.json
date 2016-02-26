@@ -1,0 +1,14 @@
+{
+  "name": "sleep",
+  "title": "Sleep",
+  "version": 1.0,
+  "author": "Adam Furman",
+  "module": "sleep",
+  "main": "run",
+  "more": {
+    "icon": "apps/sleep/sleep.png",
+    "onStart": "onStart",
+    "colorScheme": "light"
+  },
+  "description": "Provides a way to sleep the screen. Only works on an actual device."
+}

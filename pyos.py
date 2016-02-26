@@ -269,7 +269,8 @@ class GUI(object):
                      "up": "files_up.png",
                      "back": "back.png",
                      "forward": "forward.png",
-                     "search": "search.png"
+                     "search": "search.png",
+                     "info": "info.png"
                      }
         
         def getIcons(self):
@@ -1650,7 +1651,6 @@ class Application(object):
         self.ui.refresh()
         
     def onStart(self):
-        self.ui = GUI.AppContainer(self)
         self.loadColorScheme()
         if "onStartReal" in self.evtHandlers and not self.evtHandlers.get("onStartBlock", False): getattr(self.module, self.evtHandlers["onStartReal"])(state, self)
         if self.evtHandlers.get("onStartBlock", False):
@@ -1793,6 +1793,13 @@ class Notification(object):
         cont.addChild(rtitle)
         cont.addChild(rtxt)
         return cont
+    
+class PermanentNotification(Notification):
+    def clear(self):
+        pass
+    
+    def forceClear(self):
+        super(PermanentNotification, self).clear()
     
 class NotificationQueue(object):
     def __init__(self):
