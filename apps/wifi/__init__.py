@@ -13,9 +13,9 @@ def onStart(s, a):
     fiapp = WifiApp()
     
 class Network(pyos.GUI.Container):
-    def __init__(self, cell):
+    def __init__(self, cell, width):
         self.cell = cell
-        super(Network, self).__init__((0, 0), color=state.getColorPalette().getColor("background"), width=fiapp.scroller.width, height=40,
+        super(Network, self).__init__((0, 0), color=state.getColorPalette().getColor("background"), width=width, height=40,
                                       border=2, borderColor=(20, 20, 20))
         self.addChild(pyos.GUI.Image((0, 0), surface=state.getIcons().getLoadedIcon("info"), width=40, height=40, border=1, borderColor=(200, 200, 200),
                                      onClick=self.displayInfoDialog))
@@ -90,7 +90,7 @@ class WifiApp(object):
 #         try:
         self.scroller.clearChildren()
         for net in sorted(wifi.Cell.all("wlan0"), key=lambda x: x.signal):
-            self.scroller.addChild(Network(net))
+            self.scroller.addChild(Network(net, self.scroller.width))
 #         except:
 #             pyos.GUI.ErrorDialog("Unable to scan for networks.").display()
         
