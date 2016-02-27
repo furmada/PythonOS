@@ -1,7 +1,7 @@
-{
+﻿{
   "name": "pman",
   "title": "Software",
-  "version": 1.0,
+  "version": 1.1,
   "author": "Adam Furman",
   "module": "pman",
   "main": "run",

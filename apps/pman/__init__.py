@@ -118,14 +118,13 @@ class MainPage(Page):
                 self.updatesLink.SKIP_CHILD_CHECK = True
                 self.updatesLink.addChild(pyos.GUI.Text((2, 6), "Updates", (200, 200, 200), 24))
                 self.addChild(self.updatesLink)
-                
-                self.localLink = pyos.GUI.Container((0, 200), width=self.width, height=40, color=(20, 20, 150),
-                                                      onClick=self.installPkgLocAsk)
-                self.localLink.SKIP_CHILD_CHECK = True
-                self.localLink.addChild(pyos.GUI.Text((2, 6), "Install from File", (200, 200, 200), 24))
-                self.addChild(self.localLink)
             else:
                 pyos.GUI.ErrorDialog("Unable to load the repository manifest.").display()
+        self.localLink = pyos.GUI.Container((0, 200), width=self.width, height=40, color=(20, 20, 150),
+                                            onClick=self.installPkgLocAsk)
+        self.localLink.SKIP_CHILD_CHECK = True
+        self.localLink.addChild(pyos.GUI.Text((2, 6), "Install from File", (200, 200, 200), 24))
+        self.addChild(self.localLink)
                 
     def reset(self):
         self = MainPage(self.width, self.height, self.backgroundColor)
@@ -254,11 +253,11 @@ class UpdateListPage(Page):
                 item[3].setText(manifest["author"])
                 item[5].backgroundColor = (100, 100, 250)
                 item[5].setText("Update")
-                item[5].eventBindings["onClick"] = PackageManager.installAsk
+                item[5].eventBindings["onClick"] = PackageManager.updateAsk
                 item[5].eventData["onClick"] = (item[0],)
-                newOrder.append(item[1])
-            else:
                 newOrder.insert(0, item[1])
+            else:
+                newOrder.append(item[1])
         self.scroller.clearChildren()
         for child in newOrder:
             self.scroller.addChild(child)
@@ -287,6 +286,10 @@ class PackageManager(object):
         
         app.ui.addChild(self.pageContainer)
         app.ui.addChild(self.titleContainer)
+        
+        if app.file != None:
+            PackageManager.installLocalAsk(app.file)
+            app.file = None
         
         self.openPage(MainPage(self.pageContainer.width, self.pageContainer.height, self.pageContainer.backgroundColor))
         
@@ -325,6 +328,10 @@ class PackageManager(object):
     @staticmethod
     def installAsk(app):
         pyos.GUI.YNDialog("Install", "Are you sure you want to install the package "+app+" on your device?", PackageManager.install, (app,)).display()
+        
+    @staticmethod
+    def updateAsk(app):
+        pyos.GUI.YNDialog("Install", "Are you sure you want to update the package "+app+"?", PackageManager.install, (app,)).display()
         
     @staticmethod
     def installThread(app):

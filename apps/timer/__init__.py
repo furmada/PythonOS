@@ -83,8 +83,8 @@ class Timer(object):
             self.min_text.text = "00m"
             self.sec_text.text = "00s"
         else:
-            self.min_text.text = str(self.minutes)+"m"
-            self.sec_text.text = str(self.seconds)+"s"
+            self.min_text.text = str(self.minutes).rjust(2, "0")+"m"
+            self.sec_text.text = str(self.seconds).rjust(2, "0")+"s"
         self.min_text.refresh()
         self.sec_text.refresh()
         self.startBtn.setText("Start")
@@ -93,9 +93,8 @@ class Timer(object):
     def changeMinutes(self, how):
         if self.minutes + how < 0 or self.started: return
         self.minutes += how
-        self.min_text.text = str(self.minutes)+"m"
+        self.min_text.text = str(self.minutes).rjust(2, "0")+"m"
         self.min_text.refresh()
-        self.min_text.position[0] = (app.ui.width/2) - self.min_text.width
         
     def changeSeconds(self, how):
         if self.seconds + how < 0 or self.started: return
@@ -103,7 +102,7 @@ class Timer(object):
         if self.seconds >= 60:
             self.changeMinutes(1)
             self.seconds -= 60
-        self.sec_text.text = str(self.seconds)+"s"
+        self.sec_text.text = str(self.seconds).rjust(2, "0")+"s"
         self.sec_text.refresh()
     
     def update(self):
@@ -116,8 +115,8 @@ class Timer(object):
             self.startBtn.setText("Start")
             self.started = False
         else:
-            self.min_text.text = str(timed.seconds/60)+"m"
-            self.sec_text.text = str(timed.seconds%60)+"s"
+            self.min_text.text = str(timed.seconds/60).rjust(2, "0")+"m"
+            self.sec_text.text = str(timed.seconds%60).rjust(2, "0")+"s"
         self.min_text.refresh()
         self.sec_text.refresh()
 
