@@ -19,9 +19,9 @@ class Network(pyos.GUI.Container):
                                       border=2, borderColor=(20, 20, 20))
         self.addChild(pyos.GUI.Image((0, 0), surface=state.getIcons().getLoadedIcon("info"), width=40, height=40, border=1, borderColor=(200, 200, 200),
                                      onClick=self.displayInfoDialog))
-        self.addChild(pyos.GUI.Text((42, 4), str(self.cell.ssid), state.getColorPalette().getColor("item"), 24))
+        self.addChild(pyos.GUI.Text((42, 6), str(self.cell.ssid), state.getColorPalette().getColor("item"), 20))
         self.connBtn = pyos.GUI.Button((self.width-50, 0), "Connected" if fiapp.currentCell==self.cell else "Connect",
-                                       (100, 100, 200) if fiapp.currentCell==self.cell else (100, 200, 100), (20, 20, 20), 16,
+                                       (100, 100, 200) if fiapp.currentCell==self.cell else (100, 200, 100), (20, 20, 20), 14,
                                        onClick=self.connectAsk, width=50, height=40)
         self.addChild(self.connBtn)
         
@@ -30,29 +30,42 @@ class Network(pyos.GUI.Container):
         self.connBtn.backgroundColor = (100, 100, 200) if fiapp.currentCell==self.cell else (100, 200, 100)
         super(Network, self).refresh()
         
+    def schemeExists(self):
+        return (wifi.Scheme.find("wlan0", self.cell.ssid) != None)
+        
     def connectAsk(self):
         if self.cell == fiapp.currentCell: return
+        if self.schemeExists():
+            scheme = wifi.Scheme.find("wlan0", self.cell.ssid)
+            scheme.activate()
+            state.getNotificationQueue().push(pyos.Notification("Connected", "Wifi: "+str(self.cell.ssid), image=state.getIcons().getLoadedIcon("wifi"),
+                                                            source=app))
+            fiapp.currentCell = self.cell
+            app.parameters["network"] = self.cell
+            self.refresh()
+            return
         if self.cell.encrypted:
             pyos.GUI.AskDialog("Password", "The network "+str(self.cell.ssid)+" is encrypted using "+self.cell.encryption_type+". Enter the password.", self.connect).display()
         else:
             self.connect(None)
         
     def connect(self, pwd):
+#         try:
         try:
-            try:
-                scheme = wifi.Scheme.find("wlan0", self.cell.ssid)
-                scheme.activate()
-            except:
-                scheme = wifi.Scheme.for_cell("wlan0", self.cell.ssid, self.cell, pwd)
-                scheme.save()
-                scheme.activate()
-            state.getNotificationQueue().push(pyos.Notification("Connected", "Wifi: "+str(self.cell.ssid), image=state.getIcons().getLoadedIcon("wifi"),
-                                                                source=app))
-            fiapp.currentCell = self.cell
-            app.parameters["network"] = self.cell
-            self.refresh()
+            scheme = wifi.Scheme.find("wlan0", self.cell.ssid)
+            scheme.activate()
         except:
-            pyos.GUI.OKDialog(str(self.cell.ssid), "Unable to connect to "+str(self.cell.ssid)).display()
+            scheme = wifi.Scheme.for_cell("wlan0", self.cell.ssid, self.cell, pwd)
+            scheme.save()
+            scheme.activate()
+            print "Created new scheme for "+self.cell.ssid
+        state.getNotificationQueue().push(pyos.Notification("Connected", "Wifi: "+str(self.cell.ssid), image=state.getIcons().getLoadedIcon("wifi"),
+                                                            source=app))
+        fiapp.currentCell = self.cell
+        app.parameters["network"] = self.cell
+        self.refresh()
+#         except:
+#             pyos.GUI.OKDialog(str(self.cell.ssid), "Unable to connect to "+str(self.cell.ssid)).display()
         
     def displayInfoDialog(self):
         info = "Wireless Information\n"
