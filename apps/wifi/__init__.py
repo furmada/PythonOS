@@ -17,25 +17,25 @@ class Network(pyos.GUI.Container):
         self.cell = cell
         super(Network, self).__init__((0, 0), color=state.getColorPalette().getColor("background"), width=width, height=40,
                                       border=2, borderColor=(20, 20, 20))
-        self.addChild(pyos.GUI.Image((0, 0), surface=state.getIcons().getLoadedIcon("info"), width=40, height=40, border=1, borderColor=(200, 200, 200),
+        self.addChild(pyos.GUI.Image((0, 0), surface=state.getIcons().getLoadedIcon("info"), width=40, height=40, border=2, borderColor=(200, 200, 200),
                                      onClick=self.displayInfoDialog))
-        self.addChild(pyos.GUI.Text((42, 6), str(self.cell.ssid), state.getColorPalette().getColor("item"), 20))
-        self.connBtn = pyos.GUI.Button((self.width-50, 0), "Connected" if fiapp.currentCell==self.cell else "Connect",
+        self.addChild(pyos.GUI.Text((42, 11), str(self.cell.ssid), state.getColorPalette().getColor("item"), 18))
+        self.connBtn = pyos.GUI.Button((self.width-60, 0), "Connected" if fiapp.currentCell.ssid==self.cell.ssid else "Connect",
                                        (100, 100, 200) if fiapp.currentCell==self.cell else (100, 200, 100), (20, 20, 20), 14,
-                                       onClick=self.connectAsk, width=50, height=40)
+                                       onClick=self.connectAsk, onLongClick=self.connectAsk, onLongClickData=(True,), width=60, height=40)
         self.addChild(self.connBtn)
         
     def refresh(self):
-        self.connBtn.setText("Connected" if fiapp.currentCell==self.cell else "Connect")
+        self.connBtn.setText("Connected" if fiapp.currentCell.ssid==self.cell.ssid else "Connect")
         self.connBtn.backgroundColor = (100, 100, 200) if fiapp.currentCell==self.cell else (100, 200, 100)
         super(Network, self).refresh()
         
     def schemeExists(self):
         return (wifi.Scheme.find("wlan0", self.cell.ssid) != None)
         
-    def connectAsk(self):
+    def connectAsk(self, force_new_scheme=False):
         if self.cell == fiapp.currentCell: return
-        if self.schemeExists():
+        if self.schemeExists() and not force_new_scheme:
             scheme = wifi.Scheme.find("wlan0", self.cell.ssid)
             scheme.activate()
             state.getNotificationQueue().push(pyos.Notification("Connected", "Wifi: "+str(self.cell.ssid), image=state.getIcons().getLoadedIcon("wifi"),
@@ -50,18 +50,18 @@ class Network(pyos.GUI.Container):
             self.connect(None)
         
     def connect(self, pwd):
-#         try:
-        state.getGUI().displayStandbyText("Connecting...")
-        scheme = wifi.Scheme.for_cell("wlan0", self.cell.ssid, self.cell, pwd)
-        #scheme.save()
-        scheme.activate()
-        state.getNotificationQueue().push(pyos.Notification("Connected", "Wifi: "+str(self.cell.ssid), image=state.getIcons().getLoadedIcon("wifi"),
-                                                            source=app))
-        fiapp.currentCell = self.cell
-        app.parameters["network"] = self.cell
-        self.refresh()
-#         except:
-#             pyos.GUI.OKDialog(str(self.cell.ssid), "Unable to connect to "+str(self.cell.ssid)).display()
+        try:
+            state.getGUI().displayStandbyText("Connecting...")
+            scheme = wifi.Scheme.for_cell("wlan0", self.cell.ssid, self.cell, pwd)
+            scheme.save()
+            scheme.activate()
+            state.getNotificationQueue().push(pyos.Notification("Connected", "Wifi: "+str(self.cell.ssid), image=state.getIcons().getLoadedIcon("wifi"),
+                                                                source=app))
+            fiapp.currentCell = self.cell
+            app.parameters["network"] = self.cell
+            self.refresh()
+        except:
+            pyos.GUI.OKDialog(str(self.cell.ssid), "Unable to connect to "+str(self.cell.ssid)+". Check the password.").display()
         
     def displayInfoDialog(self):
         info = "Wireless Information\n"
@@ -89,10 +89,10 @@ class WifiApp(object):
         self.populate()
                 
     def populate(self):
-#         try:
-        self.scroller.clearChildren()
-        for net in sorted(wifi.Cell.all("wlan0"), key=lambda x: x.signal):
-            self.scroller.addChild(Network(net, self.scroller.width))
-#         except:
-#             pyos.GUI.ErrorDialog("Unable to scan for networks.").display()
+        try:
+            self.scroller.clearChildren()
+            for net in sorted(wifi.Cell.all("wlan0"), key=lambda x: x.signal):
+                self.scroller.addChild(Network(net, self.scroller.width))
+        except:
+            pyos.GUI.ErrorDialog("Unable to scan for networks. Check your adapter.").display()
         
