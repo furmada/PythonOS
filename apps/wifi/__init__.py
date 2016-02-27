@@ -7,10 +7,10 @@ except:
     functional = False
     
 def onStart(s, a):
-    global state, app, fiapp
+    global state, app
     state = s
     app = a
-    fiapp = WifiApp()
+    WifiApp()
     
 class Network(pyos.GUI.Container):
     def __init__(self, cell, width):
@@ -72,6 +72,8 @@ class Network(pyos.GUI.Container):
     
 class WifiApp(object):
     def __init__(self):
+        global fiapp
+        fiapp = self
         if not functional:
             pyos.GUI.ErrorDialog("The \"wifi\" module cannot be found on your system! pip install wifi.").display()
             return
