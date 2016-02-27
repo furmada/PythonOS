@@ -51,14 +51,10 @@ class Network(pyos.GUI.Container):
         
     def connect(self, pwd):
 #         try:
-        try:
-            scheme = wifi.Scheme.find("wlan0", self.cell.ssid)
-            scheme.activate()
-        except:
-            scheme = wifi.Scheme.for_cell("wlan0", self.cell.ssid, self.cell, pwd)
-            scheme.save()
-            scheme.activate()
-            print "Created new scheme for "+self.cell.ssid
+        state.getGUI().displayStandbyText("Connecting...")
+        scheme = wifi.Scheme.for_cell("wlan0", self.cell.ssid, self.cell, pwd)
+        #scheme.save()
+        scheme.activate()
         state.getNotificationQueue().push(pyos.Notification("Connected", "Wifi: "+str(self.cell.ssid), image=state.getIcons().getLoadedIcon("wifi"),
                                                             source=app))
         fiapp.currentCell = self.cell
