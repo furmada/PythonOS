@@ -85,12 +85,12 @@ class WifiApp(object):
         app.ui.addChild(self.refreshBtn)
         app.ui.addChild(self.scroller)
         self.populate()
-        
+                
     def populate(self):
-        try:
-            self.scroller.clearChildren()
-            for net in wifi.Cell.all("wlan0"):
-                self.scroller.addChild(Network(net))
-        except:
-            pyos.GUI.ErrorDialog("Unable to scan for networks.").display()
+#         try:
+        self.scroller.clearChildren()
+        for net in sorted(wifi.Cell.all("wlan0"), key=lambda x: x.signal):
+            self.scroller.addChild(Network(net))
+#         except:
+#             pyos.GUI.ErrorDialog("Unable to scan for networks.").display()
         
