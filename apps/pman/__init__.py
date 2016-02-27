@@ -2,6 +2,7 @@ import pyos
 import urllib2
 from urllib import urlretrieve
 from apps.pman.fuzzywuzzy import fuzz
+import traceback
 
 REPOSITORY = "https://raw.githubusercontent.com/furmada/PythonOSApps/gh-pages/"
 
@@ -335,6 +336,7 @@ class PackageManager(object):
             pyos.Application.install(package)
         except:
             pyos.GUI.ErrorDialog("Error while installing the package.").display()
+            traceback.print_exc()
             return
         state.getApplicationList().reloadList()
         state.getNotificationQueue().push(pyos.Notification("App Installed", "Installed "+app, 

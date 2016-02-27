@@ -33,7 +33,7 @@ def loadApps(pstate, app):
     state = pstate
     application = state.getActiveApplication()
     application.ui.backgroundColor = state.getColorPalette().getColor("background")
-    pagedContainer = pyos.GUI.GriddedPagedContainer((0, 0), width=application.ui.width, height=application.ui.height, color=state.getColorPalette().getColor("background"))
+    pagedContainer = pyos.GUI.GriddedPagedContainer((0, 0), 4, width=application.ui.width, height=application.ui.height, color=state.getColorPalette().getColor("background"))
     for app in alphabetize(getVisibleAppList()):
         appPane = None
         if app in state.getApplicationList().activeApplications:

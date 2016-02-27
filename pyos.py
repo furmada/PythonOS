@@ -968,7 +968,7 @@ class GUI(object):
                 return len(self.pages[number].childComponents) == (self.rows * self.columns)
             else:
                 return len(number.childComponents) == (self.rows * self.columns)
-        
+            
         def addChild(self, component):
             if self.pages == [] or self.isPageFilled(self.getLastPage()):
                 self.addPage(self.generatePage(color=self.backgroundColor))
@@ -1598,7 +1598,7 @@ class Application(object):
         package = ZipFile(packageloc, "r")
         package.extract("app.json", "temp/")
         app_listing = open("temp/app.json", "rU")
-        app_info = json.load(app_listing)
+        app_info = json.loads(str(unicode(app_listing.read(), errors="ignore")))
         app_listing.close()
         app_name = str(app_info.get("name"))
         os.mkdir(os.path.join("apps/", app_name))
