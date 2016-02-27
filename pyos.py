@@ -1201,14 +1201,14 @@ class GUI(object):
             self.shiftUp = False
             self.active = False
             self.textEntryField = textEntryField
+            self.movedUI = False
+            if self.textEntryField.position[1] + self.textEntryField.height > state.getGUI().height - 120:
+                state.getActiveApplication().ui.position[1] = -120
+                self.movedUI = True
             self.baseContainer = None
-            baseContainerHeight = 100
-            if self.textEntryField.position[1] >= state.getActiveApplication().ui.height - 80:
-                baseContainerHeight = 100 + self.textEntryField.height
-            self.originalTextEntryFieldPosition = self.textEntryField.position[:]
-            self.keyboardContainer = GUI.Container((0, state.getGUI().height-100), width=state.getGUI().width, height=100)
-            self.keyWidth = self.keyboardContainer.width / 10
-            self.keyHeight = self.keyboardContainer.height / 4
+            self.baseContainer = GUI.Container((0, state.getGUI().height-120), width=state.getGUI().width, height=120)
+            self.keyWidth = self.baseContainer.width / 10
+            self.keyHeight = self.baseContainer.height / 4
             #self.shift_sym = u"\u21E7" Use pygame.freetype?
             #self.enter_sym = u"\u23CE"
             #self.bkspc_sym = u"\u232B"
@@ -1249,24 +1249,17 @@ class GUI(object):
                                                         onClick=self.insertChar, onClickData=(self.keys1[row][sym],), 
                                                         onLongClick=self.insertChar, onLongClickData=(self.keys2[row][sym],),
                                                         width=self.keyWidth, height=self.keyHeight)
-                    self.keyboardContainer.addChild(button)
+                    self.baseContainer.addChild(button)
                     sym += 1
                 row += 1
-            if baseContainerHeight == 100:
-                self.baseContainer = self.keyboardContainer
-            else:
-                self.baseContainer = GUI.Container((0, state.getGUI().height-baseContainerHeight), width=state.getGUI().width, height=100)
-                self.keyboardContainer.position[1] = self.textEntryField.height
-                self.textEntryField.setPosition([0, 0])
-                self.baseContainer.addChild(self.textEntryField)
-                self.baseContainer.addChild(self.keyboardContainer)
                 
         def setOnEnter(self, value="return"):
             self.onEnter = value
             
         def deactivate(self):
             self.active = False
-            self.textEntryField.setPosition(self.originalTextEntryFieldPosition)
+            if self.movedUI:
+                state.getActiveApplication().ui.position[1] = 0
             self.textEntryField = None
             
         def setTextEntryField(self, field):

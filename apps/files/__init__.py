@@ -275,6 +275,7 @@ class FileExplorer(pyos.GUI.Container):
             self.appSupport.choiceDialog(subDir.absolutePath, subDir.shortPath)
             
     def navToAbs(self, path):
+        if path == "Cancel": return
         if not pyos.os.path.exists(path) or not pyos.os.path.isdir(path):
             pyos.GUI.ErrorDialog("The path you entered does not exist, is not a folder, or cannot be accessed.").display()
             return
