@@ -70,15 +70,19 @@ class WifiApp(object):
         self.scroller = pyos.GUI.ListScrollableContainer((0, 40), width=app.ui.width, height=app.ui.height-40, scrollAmount=40,
                                                          color=state.getColorPalette().getColor("background"))
         self.titleText = pyos.GUI.Text((2, 4), "WiFi Networks", state.getColorPalette().getColor("item"), 24)
-        self.refreshBtn = pyos.GUI.Button((app.ui.width-80, 0), "Refresh", (100, 200, 100), (20, 20, 20), 18, width=80, height=40)
+        self.refreshBtn = pyos.GUI.Button((app.ui.width-80, 0), "Refresh", (100, 200, 100), (20, 20, 20), 18, width=80, height=40,
+                                          onClick=self.populate)
         app.ui.addChild(self.titleText)
         app.ui.addChild(self.refreshBtn)
         app.ui.addChild(self.scroller)
+        self.populate()
         
     def populate(self):
         try:
+            self.scroller.clearChildren()
             for net in wifi.Cell.all("wlan0"):
+                print "Network "+net.ssid
                 self.scroller.addChild(Network(net))
         except:
-            pyos.GUI.ErrorDialog("Unable to scan for networks.")
+            pyos.GUI.ErrorDialog("Unable to scan for networks.").display()
         
