@@ -428,6 +428,7 @@ class GUI(object):
             self.height = -1
             self.eventBindings = {}
             self.eventData = {}
+            self.data = data
             self.surface = None
             self.border = 0
             self.borderColor = (0, 0, 0)
@@ -579,7 +580,7 @@ class GUI(object):
             else:
                 self.surface.blit(self.dialogScreenFreeze, (0, 0))
                 self.dialog.baseContainer.render(self.surface)
-            screen.blit(self.surface, (0, 0))
+            screen.blit(self.surface, self.position)
             
     class Text(Component):        
         def __init__(self, position, text, color=(0,0,0), size=14, **data):
@@ -1205,8 +1206,8 @@ class GUI(object):
             self.active = False
             self.textEntryField = textEntryField
             self.movedUI = False
-            if self.textEntryField.position[1] + self.textEntryField.height > state.getGUI().height - 120:
-                state.getActiveApplication().ui.position[1] = -120
+            if self.textEntryField.position[1] + self.textEntryField.height > state.getGUI().height - 120 or self.textEntryField.data.get("slideUp", False):
+                state.getActiveApplication().ui.setPosition((0, -80))
                 self.movedUI = True
             self.baseContainer = None
             self.baseContainer = GUI.Container((0, state.getGUI().height-120), width=state.getGUI().width, height=120)
@@ -1268,6 +1269,9 @@ class GUI(object):
         def setTextEntryField(self, field):
             self.textEntryField = field
             self.active = True
+            if self.textEntryField.position[1] + self.textEntryField.height > state.getGUI().height - 120 or self.textEntryField.data.get("slideUp", False):
+                state.getActiveApplication().ui.setPosition((0, -80))
+                self.movedUI = True
             
         def getEnteredText(self):
             return self.textEntryField.getText()
@@ -1967,6 +1971,7 @@ class State(object):
                 if state.getKeyboard() != None and state.getKeyboard().active:
                     if latestEvent.pos[1] < state.getKeyboard().baseContainer.position[1]:
                         state.getKeyboard().deactivate()
+                        continue
                     clickedChild = state.getKeyboard().baseContainer.getClickedChild(latestEvent)
                     if clickedChild == None:
                         clickedChild = state.getActiveApplication().ui.getClickedChild(latestEvent)
