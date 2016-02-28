@@ -1,7 +1,7 @@
 {
   "name": "wifi",
   "title": "WiFi",
-  "version": 1.0,
+  "version": 1.1,
   "author": "Adam Furman",
   "module": "wifi",
   "main": "run",
@@ -9,5 +9,5 @@
     "icon": "wifi",
     "onStart": "onStart"
   },
-  "description": "Connect to wireless networks. Requires a wireless USB device."
+  "description": "Connect to wireless networks. Requires a wireless USB device. Supports WEP and WPA2 encryption."
 }

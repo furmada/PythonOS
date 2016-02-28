@@ -45,13 +45,17 @@ class Network(pyos.GUI.Container):
             self.refresh()
             return
         if self.cell.encrypted:
-            pyos.GUI.AskDialog("Password", "The network "+str(self.cell.ssid)+" is encrypted using "+self.cell.encryption_type+". Enter the password.", self.connect).display()
+            pyos.GUI.AskDialog("Password", "The network "+str(self.cell.ssid)+" is encrypted using "+self.cell.encryption_type+". Enter the password.", self.launchConnectThread).display()
         else:
-            self.connect(None)
+            self.launchConnectThread(None)
+        
+    def launchConnectThread(self, pwd):
+        pt = pyos.ParallelTask(self.connect, (pwd,))
+        state.getThreadController().addThread(pt)
         
     def connect(self, pwd):
+        self.connBtn.setText("...")
         try:
-            state.getGUI().displayStandbyText("Connecting...")
             scheme = wifi.Scheme.for_cell("wlan0", self.cell.ssid, self.cell, pwd)
             scheme.save()
             scheme.activate()
@@ -62,6 +66,8 @@ class Network(pyos.GUI.Container):
             self.refresh()
         except:
             pyos.GUI.OKDialog(str(self.cell.ssid), "Unable to connect to "+str(self.cell.ssid)+". Check the password.").display()
+            self.connBtn.setText("Error")
+            self.connBtn.backgroundColor = state.getColorPalette().getColor("error")
         
     def displayInfoDialog(self):
         info = "Wireless Information\n"

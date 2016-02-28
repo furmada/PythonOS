@@ -1545,6 +1545,18 @@ class GUI(object):
         def getValue(self):
             return self.currentItem
         
+class ImmersionUI(object):
+    def __init__(self, app):
+        self.application = app
+        self.method = getattr(self.application.module, self.application.parameters["immersive"])
+        
+    def launch(self, resp):
+        if resp == "Yes":
+            self.method(*(self, screen))
+        
+    def start(self):
+        GUI.YNDialog("Fullscreen", "The application "+self.application.title+" is requesting total control of the UI. Launch?", self.launch).display()
+        
 class Application(object):  
     @staticmethod
     def dummy(*args, **kwargs): pass
@@ -1625,6 +1637,11 @@ class Application(object):
             self.mainMethod = Application.dummy
         try: self.parameters = app_data.get("more")
         except: pass
+        #Immersion check
+        if "immersive" in self.parameters:
+            self.immersionUI = ImmersionUI(self)
+        else:
+            self.immersionUI = None
         #check for and load event handlers
         self.evtHandlers = {}
         if "onStart" in self.parameters: 
