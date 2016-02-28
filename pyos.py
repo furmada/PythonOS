@@ -681,6 +681,9 @@ class GUI(object):
             if "surface" not in data:
                 data["surface"] = pygame.image.load(data["path"])
             self.originalSurface = data["surface"]
+            if data.get("resize", False):
+                self.width = self.originalSurface.get_width()
+                self.height = self.originalSurface.get_height()
             self.refresh()
             
         def refresh(self):
@@ -959,7 +962,7 @@ class GUI(object):
             self.rows = rows
             self.columns = columns
             super(GUI.PagedContainer, self).__init__(position, **data)
-            self.perRow = (self.height-(2*self.padding)) / rows
+            self.perRow = ((self.height-20)-(2*self.padding)) / rows
             self.perColumn = (self.width-(2*self.padding)) / columns
             super(GUI.GriddedPagedContainer, self).__init__(position, **data)
             
