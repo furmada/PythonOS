@@ -187,7 +187,10 @@ class GUI(object):
         self.width = 240
         self.height = 320
         pygame.init()
-        screen = pygame.display.set_mode((self.width, self.height), pygame.HWACCEL)
+        if __import__("sys").platform == "linux2":
+            screen = pygame.display.set_mode((self.width, self.height), pygame.FULLSCREEN)
+        else:
+            screen = pygame.display.set_mode((self.width, self.height), pygame.HWACCEL)
         screen.blit(pygame.font.Font(None, 20).render("Loading Python OS 6...", 1, (200, 200, 200)), [5, 5])
         pygame.display.flip()
         __builtin__.screen = screen
@@ -1553,12 +1556,16 @@ class ImmersionUI(object):
     def __init__(self, app):
         self.application = app
         self.method = getattr(self.application.module, self.application.parameters["immersive"])
+        self.onExit = None
         
     def launch(self, resp):
         if resp == "Yes":
             self.method(*(self, screen))
+            if self.onExit != None:
+                self.onExit()
         
-    def start(self):
+    def start(self, onExit=None):
+        self.onExit = onExit
         GUI.YNDialog("Fullscreen", "The application "+self.application.title+" is requesting total control of the UI. Launch?", self.launch).display()
         
 class Application(object):  
@@ -1686,6 +1693,7 @@ class Application(object):
         if state.getActiveApplication() == self: return
         if state.getApplicationList().getMostRecentActive() != None and not data.get("fromFullClose", False):
             state.getApplicationList().getMostRecentActive().deactivate()
+        self.ui.clearChildren()
         Application.setActiveApp(self)
         self.loadColorScheme()
         if self.thread in state.getThreadController().threads:
