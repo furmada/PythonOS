@@ -189,7 +189,7 @@ class GUI(object):
             info = pygame.display.Info()
             self.width = info.current_w
             self.height = info.current_h
-            screen = pygame.display.set_mode((info.current_w, info.current_h), pygame.FULLSCREEN)
+            screen = pygame.display.set_mode((info.current_w, info.current_h))
         else:
             screen = pygame.display.set_mode((240, 320), pygame.HWACCEL)
             self.width = screen.get_width()
