@@ -1696,7 +1696,8 @@ class Application(object):
         if state.getActiveApplication() == self: return
         if state.getApplicationList().getMostRecentActive() != None and not data.get("fromFullClose", False):
             state.getApplicationList().getMostRecentActive().deactivate()
-        self.ui.clearChildren()
+        if "onResume" in self.parameters:
+            self.ui.clearChildren()
         Application.setActiveApp(self)
         self.loadColorScheme()
         if self.thread in state.getThreadController().threads:
