@@ -187,6 +187,8 @@ class GUI(object):
         pygame.init()
         if __import__("sys").platform == "linux2":
             info = pygame.display.Info()
+            self.width = info.current_w
+            self.height = info.current_h
             screen = pygame.display.set_mode((info.current_w, info.current_h), pygame.FULLSCREEN)
         else:
             screen = pygame.display.set_mode((240, 320), pygame.HWACCEL)
