@@ -14,7 +14,7 @@ def onStart(s, a):
 
 def internet_on():
     try:
-        urllib2.urlopen('http://74.125.224.72/', timeout=1)
+        urllib2.urlopen('http://www.google.com/', timeout=5)
         return True
     except urllib2.URLError: pass
     return False

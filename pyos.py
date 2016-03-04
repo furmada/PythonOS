@@ -184,13 +184,14 @@ class GUI(object):
         self.orientation = 0 #0 for portrait, 1 for landscape
         self.timer = None
         self.update_interval = 30
-        self.width = 240
-        self.height = 320
         pygame.init()
         if __import__("sys").platform == "linux2":
-            screen = pygame.display.set_mode((self.width, self.height), pygame.FULLSCREEN)
+            info = pygame.display.Info()
+            screen = pygame.display.set_mode((info.current_w, info.current_h), pygame.FULLSCREEN)
         else:
-            screen = pygame.display.set_mode((self.width, self.height), pygame.HWACCEL)
+            screen = pygame.display.set_mode((240, 320), pygame.HWACCEL)
+            self.width = screen.get_width()
+            self.height = screen.get_height()
         screen.blit(pygame.font.Font(None, 20).render("Loading Python OS 6...", 1, (200, 200, 200)), [5, 5])
         pygame.display.flip()
         __builtin__.screen = screen
