@@ -567,26 +567,28 @@ class GUI(object):
         def __init__(self, application):
             super(GUI.AppContainer, self).__init__((0, 0), width=screen.get_width(), height=screen.get_height()-40)
             self.application = application
-            self.dialog = None
-            self.dialogScreenFreeze = None
-            self.dialogComponentsFreeze = []
+            self.dialogs = []
+            self.dialogScreenFreezes = []
+            self.dialogComponentsFreezes = []
             
         def setDialog(self, dialog):
-            self.dialog = dialog
-            self.dialogComponentsFreeze = self.childComponents[:]
-            self.dialogScreenFreeze = self.surface.copy()
-            self.childComponents = [self.dialog.baseContainer]
+            self.dialogs.insert(0, dialog)
+            self.dialogComponentsFreezes.insert(0, self.childComponents[:])
+            self.dialogScreenFreezes.insert(0, self.surface.copy())
+            self.childComponents = [dialog.baseContainer]
             
         def clearDialog(self):
-            self.dialog = None
-            self.childComponents = self.dialogComponentsFreeze
+            self.dialogs.pop(0)
+            self.childComponents = self.dialogComponentsFreezes[0]
+            self.dialogComponentsFreezes.pop(0)
+            self.dialogScreenFreezes.pop(0)
             
         def render(self):
-            if self.dialog == None:
+            if self.dialogs == []:
                 super(GUI.AppContainer, self).render(self.surface)
             else:
-                self.surface.blit(self.dialogScreenFreeze, (0, 0))
-                self.dialog.baseContainer.render(self.surface)
+                self.surface.blit(self.dialogScreenFreezes[0], (0, 0))
+                self.dialogs[0].baseContainer.render(self.surface)
             screen.blit(self.surface, self.position)
             
     class Text(Component):        
@@ -791,7 +793,6 @@ class GUI(object):
         
     class TextEntryField(Container):
         def __init__(self, position, initialText="", **data):
-            data["onClick"] = self.parseClick
             if "border" not in data:
                 data["border"] = 1
                 data["borderColor"] = state.getColorPalette().getColor("accent")
@@ -808,39 +809,40 @@ class GUI(object):
             self.indicatorPxPosition = 0
             super(GUI.TextEntryField, self).__init__(position, **data)
             self.SKIP_CHILD_CHECK = True
-            self.textComponent = GUI.Text((2, 0), initialText, data["textColor"], 14)
+            self.textComponent = GUI.Text((2, 0), initialText, data["textColor"], 16)
             self.textComponent.position[1] = GUI.getCenteredCoordinates(self.textComponent, self)[1]
             self.addChild(self.textComponent)
             
-        def parseClick(self):
+        def checkClick(self, mouseEvent, offsetX, offsetY):
+            if not super(GUI.TextEntryField, self).checkClick(mouseEvent, offsetX, offsetY): return False
             if state.getKeyboard() == None:
                 state.setKeyboard(GUI.Keyboard(self))
             if state.getKeyboard().textEntryField != self:
                 state.getKeyboard().setTextEntryField(self)
             else:
                 self.doBlink = True
-                mousePos = list(pygame.mouse.get_pos())
-                mousePos[0] -= self.position[0]
-                currFont = state.getFont().get(14)
-                currTextString = ""
+                mousePos = mouseEvent.pos[0] - offsetX
+                currFont = state.getFont().get(16)
                 pos = 0
                 textWidth = 0
                 rendered = None
-                while pos < len(self.textComponent.text):
-                    currTextString = self.textComponent.text[:pos]
-                    rendered = currFont.render(currTextString, 1, (0,0,0))
-                    textWidth = rendered.get_width()
-                    pos += 1
-                    if self.position[0]-4+textWidth <= mousePos[0] <= self.position[0]+4+textWidth:
-                        break
-                if mousePos[0] > textWidth:
-                    self.indicatorPosition = len(self.textComponent.text)
-                    self.doBlink = False
-                else:
-                    self.indicatorPxPosition = textWidth
-                    self.indicatorPosition = pos
-                    self.doBlink = True
+                if self.textComponent.text != "":
+                    perLetter = self.textComponent.width/len(self.textComponent.text)
+                    while pos < len(self.textComponent.text):
+                        rendered = currFont.render(self.textComponent.text[:pos], 1, self.textComponent.color)
+                        textWidth = rendered.get_width()
+                        if mousePos >= textWidth-perLetter and mousePos <= textWidth:
+                            break
+                        pos += 1
+                    if mousePos > textWidth:
+                        self.indicatorPosition = len(self.textComponent.text)
+                        self.doBlink = False
+                    else:
+                        self.indicatorPxPosition = textWidth - perLetter
+                        self.indicatorPosition = pos - 1
+                        self.doBlink = True
             state.getKeyboard().active = True
+            return self
             
         def appendChar(self, char):
             self.doBlink = False
@@ -874,7 +876,7 @@ class GUI(object):
                     self.lastBlink = datetime.now()
                     self.blinkOn = not self.blinkOn
                 if self.blinkOn:
-                    pygame.draw.rect(self.surface, self.textComponent.color, [2+self.indicatorPxPosition, 2, 2, self.height-4])
+                    pygame.draw.rect(self.surface, self.textComponent.color, [self.indicatorPxPosition, 2, 2, self.height-4])
             super(GUI.Container, self).render(largerSurface)
             
         def getClickedChild(self, mouseEvent, offsetX=0, offsetY=0):
@@ -1512,12 +1514,6 @@ class GUI(object):
             self.addChild(self.textComponent)
             
         def showOverlay(self):
-            if state.getActiveApplication().ui.dialog != None:
-                self.oldOverlay = state.getActiveApplication().ui.dialog
-                self.oldOverlayScreen = state.getActiveApplication().ui.dialogScreenFreeze
-            else:
-                self.oldOverlayScreen = None
-                self.oldOverlay = None
             self.overlay.display()
             
         def generateItemSequence(self, items, size=16, color=(0,0,0)):
@@ -1536,9 +1532,6 @@ class GUI(object):
             
         def onSelect(self, newVal):
             self.overlay.hide()
-            if self.oldOverlayScreen != None:
-                self.oldOverlay.display()
-                state.getActiveApplication().ui.dialogScreenFreeze = self.oldOverlayScreen.copy()
             self.currentItem = newVal
             self.textComponent.text = self.currentItem
             self.textComponent.refresh()
@@ -1720,6 +1713,7 @@ class Application(object):
         if pause:
             self.thread.setPause(True)
         else:
+            self.ui.clearChildren()
             self.thread.setStop()
             state.getApplicationList().closeApp(self)
         state.getColorPalette().setScheme()
@@ -1973,6 +1967,10 @@ class State(object):
             state.getFunctionBar().render()
             if state.getKeyboard() != None and state.getKeyboard().active:
                 state.getKeyboard().render(screen)
+            
+            if state.getGUI().update_interval <= 5:
+                pygame.draw.rect(screen, (255, 0, 0), [state.getGUI().width-5, 0, 5, 5])
+            
             state.getGUI().refresh()
             #Check Events
             latestEvent = state.getEventQueue().getLatestComplete()
@@ -1980,7 +1978,10 @@ class State(object):
                 clickedChild = None
                 if state.getKeyboard() != None and state.getKeyboard().active:
                     if latestEvent.pos[1] < state.getKeyboard().baseContainer.position[1]:
-                        state.getKeyboard().deactivate()
+                        if state.getActiveApplication().ui.getClickedChild(latestEvent) == state.getKeyboard().textEntryField:
+                            state.getKeyboard().textEntryField.onClick()
+                        else:
+                            state.getKeyboard().deactivate()
                         continue
                     clickedChild = state.getKeyboard().baseContainer.getClickedChild(latestEvent)
                     if clickedChild == None:
