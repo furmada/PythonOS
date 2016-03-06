@@ -518,6 +518,7 @@ class GUI(object):
         def clearChildren(self):
             for component in self.childComponents:
                 self.removeChild(component)
+            self.childComponents = []
             
         def getClickedChild(self, mouseEvent, offsetX=0, offsetY=0):
             currChild = len(self.childComponents)
@@ -1668,7 +1669,6 @@ class Application(object):
         self.thread = Thread(self.mainMethod, **self.evtHandlers)
         self.ui = GUI.AppContainer(self)
         infofile.close()
-        self.loadColorScheme()
         self.thread = Thread(self.mainMethod, **self.evtHandlers)
         
     def getModule(self):
@@ -1696,8 +1696,6 @@ class Application(object):
         if state.getActiveApplication() == self: return
         if state.getApplicationList().getMostRecentActive() != None and not data.get("fromFullClose", False):
             state.getApplicationList().getMostRecentActive().deactivate()
-        if "onResume" in self.parameters:
-            self.ui.clearChildren()
         Application.setActiveApp(self)
         self.loadColorScheme()
         if self.thread in state.getThreadController().threads:
