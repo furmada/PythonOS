@@ -889,6 +889,7 @@ class GUI(object):
             super(GUI.PagedContainer, self).__init__(position, **data)
             self.pages = data.get("pages", [])
             self.currentPage = 0
+            self.hideControls = data.get("hideControls", False)
             self.pageControls = GUI.Container((0, self.height-20), color=state.getColorPalette().getColor("background"), width=self.width, height=20)
             self.pageLeftButton = GUI.Button((0, 0), " < ", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("accent"),
                                             16, width=40, height=20, onClick=self.pageLeft, onLongClick=self.goToPage)
@@ -896,13 +897,14 @@ class GUI(object):
                                             16, width=40, height=20, onClick=self.pageRight, onLongClick=self.goToLastPage)
             self.pageIndicatorText = GUI.Text((0, 0), str(self.currentPage + 1)+" of "+str(len(self.pages)), state.getColorPalette().getColor("item"),
                                             16)
-            self.pageHolder = GUI.Container((0, 0), color=state.getColorPalette().getColor("background"), width=self.width, height=self.height-20)
+            self.pageHolder = GUI.Container((0, 0), color=state.getColorPalette().getColor("background"), width=self.width, height=(self.height-20 if not self.hideControls else self.height))
             self.pageIndicatorText.position[0] = GUI.getCenteredCoordinates(self.pageIndicatorText, self.pageControls)[0]
             super(GUI.PagedContainer, self).addChild(self.pageHolder)
             self.pageControls.addChild(self.pageLeftButton)
             self.pageControls.addChild(self.pageIndicatorText)
             self.pageControls.addChild(self.pageRightButton)
-            super(GUI.PagedContainer, self).addChild(self.pageControls)
+            if not self.hideControls:
+                super(GUI.PagedContainer, self).addChild(self.pageControls)
             
         def addPage(self, page):
             self.pages.append(page)
@@ -1057,6 +1059,22 @@ class GUI(object):
             for child in childrenCopy:
                 self.addChild(child)
                 
+    class ScrollIndicator(Component):
+        def __init__(self, scrollCont, position, color, **data):
+            super(GUI.ScrollIndicator, self).__init__(position, **data)
+            self.scrollContainer = scrollCont
+            self.color = color
+            
+        def update(self):
+            self.pct = 1.0 * self.scrollContainer.height / self.scrollContainer.maxOffset
+            self.slide = -self.scrollContainer.offset*self.pct
+            self.sih = self.pct * self.height
+            
+        def render(self, largerSurface):
+            self.surface.fill(self.color)
+            pygame.draw.rect(self.surface, state.getColorPalette().getColor("accent"), [0, int(self.slide*(1.0*self.height/self.scrollContainer.height)), self.width, int(self.sih)])
+            super(GUI.ScrollIndicator, self).render(largerSurface)
+                
     class ScrollableContainer(Container):
         def __init__(self, position, **data): 
             self.scrollAmount = data.get("scrollAmount", 15) 
@@ -1067,8 +1085,7 @@ class GUI(object):
                                          onClick=self.scroll, onClickData=(self.scrollAmount,))
             self.scrollDownBtn = GUI.Image((0, self.scrollBar.height-40), path="res/scrolldown.png", width=20, height=40,
                                          onClick=self.scroll, onClickData=(-self.scrollAmount,))
-            self.scrollIndicator = GUI.Canvas((0, 40), width=20, height=self.scrollBar.height-80)
-            self.scrollIndicator.getSurface().fill(state.getColorPalette().getColor("item"))
+            self.scrollIndicator = GUI.ScrollIndicator(self, (0, 40), self.backgroundColor, width=20, height=self.scrollBar.height-80, border=1, borderColor=state.getColorPalette().getColor("item"))
             self.scrollBar.addChild(self.scrollUpBtn)
             self.scrollBar.addChild(self.scrollIndicator)
             self.scrollBar.addChild(self.scrollDownBtn)
@@ -1076,7 +1093,8 @@ class GUI(object):
             super(GUI.ScrollableContainer, self).addChild(self.scrollBar)
             self.offset = 0
             self.minOffset = 0
-            self.maxOffset = 0
+            self.maxOffset = self.height
+            self.scrollIndicator.update()
             
         def scroll(self, amount):
             #if amount < 0 and self.offset + amount < self.minOffset: return
@@ -1084,10 +1102,7 @@ class GUI(object):
             for child in self.container.childComponents:
                 child.position[1] = child.position[1]+amount
             self.offset += amount
-            self.scrollIndicator.surface.fill((0, 0, 0))
-            siHeight = (self.maxOffset-self.minOffset) / self.height
-            pygame.draw.rect(self.scrollIndicator.surface, state.getColorPalette().getColor("accent"),
-                             [0, (self.height / 2)-(siHeight / 2), 20, siHeight])
+            self.scrollIndicator.update()
                 
         def getVisibleChildren(self):
             visible = []
@@ -1125,8 +1140,9 @@ class GUI(object):
         
         def addChild(self, component):
             if component.position[1] < self.minOffset: self.minOffset = component.position[1]
-            if component.position[1]+component.height > self.maxOffset: self.maxOffset = -(component.position[1]+component.height)
+            if component.position[1]+component.height > self.maxOffset: self.maxOffset = component.position[1]+component.height
             self.container.addChild(component)
+            self.scrollIndicator.update()
             
         def removeChild(self, component):
             self.container.removeChild(component)
@@ -1135,12 +1151,14 @@ class GUI(object):
                 for comp in self.container.childComponents:
                     if comp.position[1] < self.minOffset: self.minOffset = comp.position[1]
             if component.position[1] == self.maxOffset:
-                self.maxOffset = 0
+                self.maxOffset = self.height
                 for comp in self.container.childComponents:
                     if comp.position[1]+comp.height > self.maxOffset: self.maxOffset = comp.position[1]+comp.height
+            self.scrollIndicator.update()
                     
         def clearChildren(self):
             self.container.clearChildren()
+            self.scrollIndicator.update()
             
         def render(self, largerSurface):
             super(GUI.ScrollableContainer, self).render(largerSurface)
@@ -1176,8 +1194,9 @@ class GUI(object):
             self.container = GUI.Container((0, state.getGUI().height-40), background=state.getColorPalette().getColor("background"), width=state.getGUI().width, height=40)
             self.launcherApp = state.getApplicationList().getApp("launcher")
             self.notificationMenu = GUI.NotificationMenu()
+            self.recentAppSwitcher = GUI.RecentAppSwitcher()
             self.menu_button = GUI.Image((0, 0), surface=state.getIcons().getLoadedIcon("menu"), onClick=self.activateLauncher, onLongClick=Application.fullCloseCurrent)
-            self.app_title_text = GUI.Text((42, 8), "Python OS 6", state.getColorPalette().getColor("item"), 20, onClick=Application.chainRefreshCurrent)
+            self.app_title_text = GUI.Text((42, 8), "Python OS 6", state.getColorPalette().getColor("item"), 20, onClick=self.toggleRecentAppSwitcher)
             self.clock_text = GUI.Text((state.getGUI().width-45, 8), self.formatTime(), state.getColorPalette().getColor("accent"), 20, onClick=self.toggleNotificationMenu, onLongClick=State.rescue) #Add Onclick Menu
             self.container.addChild(self.menu_button)
             self.container.addChild(self.app_title_text)
@@ -1207,6 +1226,13 @@ class GUI(object):
                 return
             else: 
                 self.notificationMenu.display()
+                
+        def toggleRecentAppSwitcher(self):
+            if self.recentAppSwitcher.displayed:
+                self.recentAppSwitcher.hide()
+                return
+            else:
+                self.recentAppSwitcher.display()
             
     class Keyboard(object):
         def __init__(self, textEntryField=None, onEnter="return"):
@@ -1492,6 +1518,68 @@ class GUI(object):
         def clearAll(self):
             state.getNotificationQueue().clear()
             self.refresh()
+            
+    class RecentAppSwitcher(Overlay):
+        def __init__(self):
+            super(GUI.RecentAppSwitcher, self).__init__((0, screen.get_height()-100), height=60)
+            self.container.border = 1
+            self.container.borderColor = state.getColorPalette().getColor("item")
+            
+        def populate(self):
+            self.container.clearChildren()
+            self.recent_pages = GUI.PagedContainer((20, 0), width=self.width-40, height=60, hideControls=True)
+            self.recent_pages.addPage(self.recent_pages.generatePage())
+            self.btnLeft = GUI.Button((0, 0), "<", state.getColorPalette().getColor("accent"), state.getColorPalette().getColor("item"), 20, width=20, height=60,
+                                      onClick=self.recent_pages.pageLeft)
+            self.btnRight = GUI.Button((self.width-20, 0), ">", state.getColorPalette().getColor("accent"), state.getColorPalette().getColor("item"), 20, width=20, height=60,
+                                      onClick=self.recent_pages.pageRight)
+            per_app = (self.width-40)/4
+            current = 0
+            for app in state.getApplicationList().activeApplications:
+                if app != state.getActiveApplication() and app.parameters.get("persist", True) and app.name != "home":
+                    if current >= 4:
+                        current = 0
+                        self.recent_pages.addPage(self.recent_pages.generatePage())
+                    cont = GUI.Container((per_app*current, 0), transparent=True, width=per_app, height=self.height, border=1, borderColor=state.getColorPalette().getColor("item"),
+                                         onClick=self.activate, onClickData=(app,), onLongClick=self.closeAsk, onLongClickData=(app,))
+                    cont.SKIP_CHILD_CHECK = True
+                    icon = app.getIcon()
+                    if not icon: icon = state.getIcons().getLoadedIcon("unknown")
+                    img = GUI.Image((0, 5), surface=icon)
+                    img.position[0] = GUI.getCenteredCoordinates(img, cont)[0]
+                    name = GUI.Text((0, 45), app.title, state.getColorPalette().getColor("item"), 10)
+                    name.position[0] = GUI.getCenteredCoordinates(name, cont)[0]
+                    cont.addChild(img)
+                    cont.addChild(name)                    
+                    self.recent_pages.addChild(cont)
+                    current += 1
+            if len(self.recent_pages.getPage(0).childComponents) == 0:
+                notxt = GUI.Text((0, 0), "No Recent Apps", state.getColorPalette().getColor("item"), 16)
+                notxt.position = GUI.getCenteredCoordinates(notxt, self.recent_pages.getPage(0))
+                self.recent_pages.addChild(notxt)
+            self.recent_pages.goToPage()
+            self.addChild(self.recent_pages)
+            self.addChild(self.btnLeft)
+            self.addChild(self.btnRight)
+            
+        def display(self):
+            self.populate()
+            super(GUI.RecentAppSwitcher, self).display()
+                    
+        def activate(self, app):
+            self.hide()
+            app.activate()
+            
+        def closeAsk(self, app):
+            GUI.YNDialog("Close", "Are you sure you want to close the app "+app.title+"?", self.close, (app,)).display()
+            
+        def close(self, app, resp):
+            if resp == "Yes":
+                app.deactivate(False)
+                self.hide()
+                if state.getActiveApplication() == state.getApplicationList().getApp("launcher"):
+                    Application.fullCloseCurrent()
+            
             
     class Selector(Container):      
         def __init__(self, position, items, **data):
@@ -1851,6 +1939,7 @@ class State(object):
         self.font = font
         self.appList = appList
         self.keyboard = keyboard
+        self.recentAppSwitcher = None
         if gui == None: self.gui = GUI()
         if colors == None: self.colorPalette = GUI.ColorPalette()
         if icons == None: self.icons = GUI.Icons()
