@@ -1074,7 +1074,7 @@ class GUI(object):
             self.surface.fill(self.color)
             pygame.draw.rect(self.surface, state.getColorPalette().getColor("accent"), [0, int(self.slide*(1.0*self.height/self.scrollContainer.height)), self.width, int(self.sih)])
             super(GUI.ScrollIndicator, self).render(largerSurface)
-                
+                            
     class ScrollableContainer(Container):
         def __init__(self, position, **data): 
             self.scrollAmount = data.get("scrollAmount", 15) 
@@ -1103,6 +1103,10 @@ class GUI(object):
                 child.position[1] = child.position[1]+amount
             self.offset += amount
             self.scrollIndicator.update()
+            
+        def scrollTo(self, amount):
+            self.scroll(-self.offset)
+            self.scroll(amount)
                 
         def getVisibleChildren(self):
             visible = []
@@ -1158,6 +1162,8 @@ class GUI(object):
                     
         def clearChildren(self):
             self.container.clearChildren()
+            self.maxOffset = self.height
+            self.offset = 0
             self.scrollIndicator.update()
             
         def render(self, largerSurface):
@@ -1185,10 +1191,7 @@ class GUI(object):
             self.container.childComponents = []
             for child in childrenCopy:
                 self.addChild(child)
-                
-        def clearChildren(self):
-            self.container.childComponents = []
-                    
+   
     class FunctionBar(object):
         def __init__(self):
             self.container = GUI.Container((0, state.getGUI().height-40), background=state.getColorPalette().getColor("background"), width=state.getGUI().width, height=40)
