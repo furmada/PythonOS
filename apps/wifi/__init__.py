@@ -27,7 +27,7 @@ class Network(pyos.GUI.Container):
         
     def refresh(self):
         self.connBtn.setText("Connected" if not fiapp.currentCell==None and fiapp.currentCell.ssid==self.cell.ssid else "Connect")
-        self.connBtn.backgroundColor = (100, 100, 200) if not fiapp.currentCell==None and fiapp.currentCell==self.cell else (100, 200, 100)
+        self.connBtn.backgroundColor = (100, 100, 200) if (fiapp.currentCell!=None and fiapp.currentCell==self.cell) else (100, 200, 100)
         super(Network, self).refresh()
         
     def schemeExists(self):
@@ -37,13 +37,8 @@ class Network(pyos.GUI.Container):
         if self.cell == fiapp.currentCell: return
         if self.schemeExists() and not force_new_scheme:
             self.connBtn.setText("...")
-            scheme = wifi.Scheme.find("wlan0", self.cell.ssid)
-            scheme.activate()
-            state.getNotificationQueue().push(pyos.Notification("Connected", "Wifi: "+str(self.cell.ssid), image=state.getIcons().getLoadedIcon("wifi"),
-                                                            source=app))
-            fiapp.currentCell = self.cell
-            app.parameters["network"] = self.cell
-            self.refresh()
+            pt = pyos.ParallelTask(self.connect_existing)
+            state.getThreadController().addThread(pt)
             return
         if self.cell.encrypted:
             pyos.GUI.AskDialog("Password", "The network "+str(self.cell.ssid)+" is encrypted using "+self.cell.encryption_type+". Enter the password.", self.launchConnectThread).display()
@@ -53,6 +48,18 @@ class Network(pyos.GUI.Container):
     def launchConnectThread(self, pwd):
         pt = pyos.ParallelTask(self.connect, (pwd,))
         state.getThreadController().addThread(pt)
+        
+    def connect_existing(self):
+        try:
+            scheme = wifi.Scheme.find("wlan0", self.cell.ssid)
+            scheme.activate()
+            state.getNotificationQueue().push(pyos.Notification("Connected", "Wifi: "+str(self.cell.ssid), image=state.getIcons().getLoadedIcon("wifi"),
+                                                        source=app))
+            fiapp.currentCell = self.cell
+            app.parameters["network"] = self.cell
+            self.refresh()
+        except:
+            pyos.GUI.ErrorDialog("Unable to connect to the known network "+str(self.cell.ssid)+". Perhaps the password has changed.").display()
         
     def connect(self, pwd):
         self.connBtn.setText("...")

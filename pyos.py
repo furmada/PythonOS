@@ -14,6 +14,7 @@ from zipfile import ZipFile
 from thread import start_new_thread
 from datetime import datetime
 from __builtin__ import staticmethod
+from traceback import format_exc
 
 #state = None
 screen = None
@@ -69,12 +70,17 @@ class Thread(object):
         self.execEvent("onStop")
         
     def run(self):
-        if self.firstRun:
-            if self.eventBindings["onStart"] != None:
-                self.execEvent("onStart")
+        try:
+            if self.firstRun:
+                if self.eventBindings["onStart"] != None:
+                    self.execEvent("onStart")
+                self.firstRun = False
+            if not self.pause and not self.stop:
+                self.method()
+        except:
+            State.error_recovery("Thread error.", "Thread bindings: "+str(self.eventBindings))
+            self.stop = True
             self.firstRun = False
-        if not self.pause and not self.stop:
-            self.method()
             
 class Task(Thread):
     def __init__(self, method, *additionalData):
@@ -164,12 +170,7 @@ class Controller(object):
         
     def run(self):
         for thread in self.threads:
-            #try:
             thread.run()
-            #except:
-            #    print "The thread " + str(thread.method) + " has encountered an error. It will be terminated."
-            #    print_last()
-            #    thread.setStop()
             if thread in self.dataRequests:
                 try:
                     self.dataRequests[thread] = thread.getReturn()
@@ -466,17 +467,23 @@ class GUI(object):
             
         def onClick(self):
             if "onClick" in self.eventBindings: 
-                if "onClick" in self.eventData:
-                    self.eventBindings["onClick"](*self.eventData["onClick"])
-                else:
-                    self.eventBindings["onClick"]()
+                try:
+                    if "onClick" in self.eventData:
+                        self.eventBindings["onClick"](*self.eventData["onClick"])
+                    else:
+                        self.eventBindings["onClick"]()
+                except:
+                    State.error_recovery("Click event error.", "Component rect: "+str([self.position[0], self.position[1], self.width, self.height]))
             
         def onLongClick(self):
             if "onLongClick" in self.eventBindings:
-                if "onLongClick" in self.eventData:
-                    self.eventBindings["onLongClick"](*self.eventData["onLongClick"])
-                else:
-                    self.eventBindings["onLongClick"]()
+                try:
+                    if "onLongClick" in self.eventData:
+                        self.eventBindings["onLongClick"](*self.eventData["onLongClick"])
+                    else:
+                        self.eventBindings["onLongClick"]()
+                except:
+                    State.error_recovery("LongClick event error", "Component rect: "+str([self.position[0], self.position[1], self.width, self.height]))
             
         def render(self, largerSurface):
             if self.border > 0:
@@ -1708,7 +1715,10 @@ class Application(object):
         app_info = json.loads(str(unicode(app_listing.read(), errors="ignore")))
         app_listing.close()
         app_name = str(app_info.get("name"))
-        os.mkdir(os.path.join("apps/", app_name))
+        if app_name not in state.getApplicationList().getApplicationList():
+            os.mkdir(os.path.join("apps/", app_name))
+        else:
+            print "Upgrading "+app_name
         package.extractall(os.path.join("apps/", app_name))
         package.close()
         alist = Application.getListings()
@@ -1775,19 +1785,22 @@ class Application(object):
         self.ui.refresh()
         
     def activate(self, **data):
-        if data.get("noOnStart", False):
-            self.evtHandlers["onStartBlock"] = True
-        if state.getActiveApplication() == self: return
-        if state.getApplicationList().getMostRecentActive() != None and not data.get("fromFullClose", False):
-            state.getApplicationList().getMostRecentActive().deactivate()
-        Application.setActiveApp(self)
-        self.loadColorScheme()
-        if self.thread in state.getThreadController().threads:
-            self.thread.setPause(False)
-        else:
-            if self.thread.stop:
-                self.thread = Thread(self.mainMethod, **self.evtHandlers)
-            state.getThreadController().addThread(self.thread)
+        try:
+            if data.get("noOnStart", False):
+                self.evtHandlers["onStartBlock"] = True
+            if state.getActiveApplication() == self: return
+            if state.getApplicationList().getMostRecentActive() != None and not data.get("fromFullClose", False):
+                state.getApplicationList().getMostRecentActive().deactivate()
+            Application.setActiveApp(self)
+            self.loadColorScheme()
+            if self.thread in state.getThreadController().threads:
+                self.thread.setPause(False)
+            else:
+                if self.thread.stop:
+                    self.thread = Thread(self.mainMethod, **self.evtHandlers)
+                state.getThreadController().addThread(self.thread)
+        except:
+            State.error_recovery("Application init error.", "App name: "+self.name)
             
     def getIcon(self):
         if "icon" in self.parameters:
@@ -2043,6 +2056,43 @@ class State(object):
                     else:
                         print "Returning to Python OS."
                         return
+    
+    @staticmethod       
+    def error_recovery(message="Unknown", data=None):
+        screen.fill([200, 100, 100])
+        rf = pygame.font.Font(None, 24)
+        sf = pygame.font.Font(None, 18)
+        screen.blit(rf.render("Failure detected.", 1, (200, 200, 200)), [20, 20])
+        f = open("temp/last_error.txt", "w")
+        txt = "Python OS 6 Error Report\nTIME: "+str(datetime.now())
+        txt += "\n\nOpen Applications: "+str([a.name for a in state.getApplicationList().activeApplications])
+        txt += "\nMessage: "+message
+        txt += "\nAdditional Data:\n"
+        txt += str(data)
+        txt += "\n\nTraceback:\n"
+        txt += format_exc()
+        f.write(txt)
+        f.close()
+        screen.blit(sf.render("Traceback saved.", 1, (200, 200, 200)), [20, 80])
+        screen.blit(sf.render("Location: temp/last_error.txt", 1, (200, 200, 200)), [20, 100])
+        screen.blit(sf.render("Message:", 1, (200, 200, 200)), [20, 140])
+        screen.blit(sf.render(message, 1, (200, 200, 200)), [20, 160])
+        pygame.draw.rect(screen, [200, 200, 200], [0, 280, 240, 40])
+        screen.blit(sf.render("Return to Python OS", 1, (20, 20, 20)), [20, 292])
+        rClock = pygame.time.Clock()
+        pygame.display.flip()
+        while True:
+            rClock.tick(10)
+            for evt in pygame.event.get():
+                if evt.type == pygame.QUIT or evt.type == pygame.KEYDOWN and evt.key == pygame.K_ESCAPE:
+                    try: state.exit()
+                    except:
+                        pygame.quit()
+                        exit()
+                if evt.type == pygame.MOUSEBUTTONDOWN:
+                    if evt.pos[1] >= 280:
+                        return
+    
     @staticmethod
     def main():
         while True:
@@ -2055,7 +2105,11 @@ class State(object):
             state.getThreadController().run()
             #Paint UI
             if state.getActiveApplication() != None:
-                state.getActiveApplication().ui.render()
+                try:
+                    state.getActiveApplication().ui.render()
+                except:
+                    State.error_recovery("UI error.", "FPS: "+str(state.getGUI().update_interval))
+                    Application.fullCloseCurrent()
             state.getFunctionBar().render()
             if state.getKeyboard() != None and state.getKeyboard().active:
                 state.getKeyboard().render(screen)
