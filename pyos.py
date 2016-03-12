@@ -77,7 +77,7 @@ class Thread(object):
                 self.firstRun = False
             if not self.pause and not self.stop:
                 self.method()
-        except:
+        except not SystemExit:
             State.error_recovery("Thread error.", "Thread bindings: "+str(self.eventBindings))
             self.stop = True
             self.firstRun = False
@@ -472,7 +472,7 @@ class GUI(object):
                         self.eventBindings["onClick"](*self.eventData["onClick"])
                     else:
                         self.eventBindings["onClick"]()
-                except:
+                except not SystemExit:
                     State.error_recovery("Click event error.", "Component rect: "+str([self.position[0], self.position[1], self.width, self.height]))
             
         def onLongClick(self):
@@ -482,7 +482,7 @@ class GUI(object):
                         self.eventBindings["onLongClick"](*self.eventData["onLongClick"])
                     else:
                         self.eventBindings["onLongClick"]()
-                except:
+                except not SystemExit:
                     State.error_recovery("LongClick event error", "Component rect: "+str([self.position[0], self.position[1], self.width, self.height]))
             
         def render(self, largerSurface):
@@ -2059,6 +2059,7 @@ class State(object):
     
     @staticmethod       
     def error_recovery(message="Unknown", data=None):
+        print message
         screen.fill([200, 100, 100])
         rf = pygame.font.Font(None, 24)
         sf = pygame.font.Font(None, 18)
@@ -2141,10 +2142,13 @@ class State(object):
                     else:
                         clickedChild = state.getFunctionBar().container.getClickedChild(latestEvent)
                 if clickedChild != None:
-                    if isinstance(latestEvent, GUI.LongClickEvent):
-                        clickedChild.onLongClick()
-                    else:
-                        clickedChild.onClick()
+                    try:
+                        if isinstance(latestEvent, GUI.LongClickEvent):
+                            clickedChild.onLongClick()
+                        else:
+                            clickedChild.onClick()
+                    except not SystemExit:
+                        State.error_recovery("Event execution error", "Click event: "+str(latestEvent))
             
     @staticmethod
     def state_shell():
@@ -2171,4 +2175,7 @@ if __name__ == "__main__":
     if __import__("sys").platform == 'linux2':
         pygame.mouse.set_visible(False)
     state.getApplicationList().getApp("home").activate()
-    State.main()
+    try:
+        State.main()
+    except not SystemExit:
+        State.error_recovery("Fatal system error.")
