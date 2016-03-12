@@ -36,6 +36,7 @@ class Network(pyos.GUI.Container):
     def connectAsk(self, force_new_scheme=False):
         if self.cell == fiapp.currentCell: return
         if self.schemeExists() and not force_new_scheme:
+            self.connBtn.setText("...")
             scheme = wifi.Scheme.find("wlan0", self.cell.ssid)
             scheme.activate()
             state.getNotificationQueue().push(pyos.Notification("Connected", "Wifi: "+str(self.cell.ssid), image=state.getIcons().getLoadedIcon("wifi"),
