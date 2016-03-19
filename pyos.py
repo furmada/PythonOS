@@ -865,7 +865,7 @@ class GUI(object):
             rendered = None
             if self.textComponent.text != "":
                 perLetter = self.textComponent.width/len(self.textComponent.text)
-                while pos < len(self.textComponent.getTextComponent().text):
+                while pos < len(self.textComponent.text):
                     rendered = currFont.render(self.textComponent.text[:pos], 1, self.textComponent.color)
                     textWidth = rendered.get_width()
                     if mousePos >= textWidth-perLetter and mousePos <= textWidth:
@@ -1349,6 +1349,10 @@ class GUI(object):
             self.textComponent = textComponent
             if self.textComponent == None:
                 self.textComponent = GUI.ExpandingMultiLineText((0, 0), "", state.getColorPalette().getColor("item"), width=self.container.width, height=self.container.height, scroller=self)
+            else:
+                if self.textComponent.width == self.width:
+                    self.textComponent.width = self.container.width
+                    self.textComponent.refresh()
             self.addChild(self.textComponent)
             
         def getTextComponent(self):
