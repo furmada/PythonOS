@@ -77,7 +77,7 @@ class Thread(object):
                 self.firstRun = False
             if not self.pause and not self.stop:
                 self.method()
-        except not SystemExit:
+        except:
             State.error_recovery("Thread error.", "Thread bindings: "+str(self.eventBindings))
             self.stop = True
             self.firstRun = False
@@ -464,6 +464,7 @@ class GUI(object):
             if "border" in data: 
                 self.border = int(data["border"])
                 if "borderColor" in data: self.borderColor = data["borderColor"]
+            self.innerClickCoordinates = (-1, -1)
             
         def onClick(self):
             if "onClick" in self.eventBindings: 
@@ -472,7 +473,7 @@ class GUI(object):
                         self.eventBindings["onClick"](*self.eventData["onClick"])
                     else:
                         self.eventBindings["onClick"]()
-                except not SystemExit:
+                except:
                     State.error_recovery("Click event error.", "Component rect: "+str([self.position[0], self.position[1], self.width, self.height]))
             
         def onLongClick(self):
@@ -482,7 +483,7 @@ class GUI(object):
                         self.eventBindings["onLongClick"](*self.eventData["onLongClick"])
                     else:
                         self.eventBindings["onLongClick"]()
-                except not SystemExit:
+                except:
                     State.error_recovery("LongClick event error", "Component rect: "+str([self.position[0], self.position[1], self.width, self.height]))
             
         def render(self, largerSurface):
@@ -493,11 +494,16 @@ class GUI(object):
         def refresh(self):
             self.surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
             
+        def getInnerClickCoordinates(self):
+            return self.innerClickCoordinates
+            
         def checkClick(self, mouseEvent, offsetX=0, offsetY=0):
             adjusted = [mouseEvent.pos[0] - offsetX, mouseEvent.pos[1] - offsetY]
             if adjusted[0] < 0 or adjusted[1] < 0: return False
             if adjusted[0] >= self.position[0] and adjusted[0] <= self.position[0] + self.width:
                 if adjusted[1] >= self.position[1] and adjusted[1] <= self.position[1] + self.height:
+                    self.innerClickCoordinates = tuple(adjusted)
+                    self.data["lastEvent"] = mouseEvent
                     return True
             return False
         
@@ -603,12 +609,13 @@ class GUI(object):
             self.text = text
             self.size = size
             self.color = color
+            self.font = data.get("font", state.getFont())
             self.refresh()
             data["surface"] = self.getRenderedText()
             super(GUI.Text, self).__init__(position, **data)
             
         def getRenderedText(self):
-            return state.getFont().get(self.size).render(str(self.text), 1, self.color)
+            return self.font.get(self.size).render(str(self.text), 1, self.color)
             
         def refresh(self):
             self.surface = self.getRenderedText()
@@ -624,12 +631,14 @@ class GUI(object):
         def render_textrect(string, font, rect, text_color, background_color, justification=0):
             final_lines = []
             requested_lines = string.splitlines()
+            err = None
             for requested_line in requested_lines:
                 if font.size(requested_line)[0] > rect.width:
                     words = requested_line.split(' ')
                     for word in words:
                         if font.size(word)[0] >= rect.width:
                             print "The word " + word + " is too long to fit in the rect passed."
+                            err = 0
                     accumulated_line = ""
                     for word in words:
                         test_line = accumulated_line + word + " "
@@ -646,7 +655,7 @@ class GUI(object):
             accumulated_height = 0 
             for line in final_lines: 
                 if accumulated_height + font.size(line)[1] >= rect.height:
-                    print "Once word-wrapped, the text string was too tall to fit in the rect."
+                    err = 1
                 if line != "":
                     tempsurface = font.render(line, 1, text_color)
                     if justification == 0:
@@ -657,8 +666,9 @@ class GUI(object):
                         surface.blit(tempsurface, (rect.width - tempsurface.get_width(), accumulated_height))
                     else:
                         print "Invalid justification argument: " + str(justification)
+                        err = 2
                 accumulated_height += font.size(line)[1]
-            return surface
+            return (surface, err, final_lines)
         
         def __init__(self, position, text, color=(0,0,0), size=14, justification=0, **data):
             self.justification = justification
@@ -670,11 +680,34 @@ class GUI(object):
                 self.width = state.getGUI().width
                 
         def getRenderedText(self):
-            return GUI.MultiLineText.render_textrect(self.text, state.getFont().get(self.size), pygame.Rect(self.position[0], self.position[1], self.width, self.height),
-                                                             self.color, (0, 0, 0, 0), self.justification)
+            return GUI.MultiLineText.render_textrect(self.text, self.font.get(self.size), pygame.Rect(self.position[0], self.position[1], self.width, self.height),
+                                                     self.color, (0, 0, 0, 0), self.justification)[0]
             
         def refresh(self):
             self.surface = self.getRenderedText()
+            
+    class ExpandingMultiLineText(MultiLineText):
+        def __init__(self, position, text, color=(0,0,0), size=14, justification=0, lineHeight=16, **data):
+            self.lineHeight = lineHeight
+            self.linkedScroller = data.get("scroller", None)
+            self.textLines = []
+            super(GUI.ExpandingMultiLineText, self).__init__(position, text, color, size, justification, **data)
+            self.refresh()
+            
+        def getRenderedText(self):
+            fits = False
+            surf = None
+            while not fits:
+                d = GUI.MultiLineText.render_textrect(self.text, self.font.get(self.size), pygame.Rect(self.position[0], self.position[1], self.width, self.height),
+                                                      self.color, (0, 0, 0, 0), self.justification)
+                surf = d[0]
+                fits = d[1] != 1
+                self.textLines = d[2]
+                if not fits:
+                    self.height += self.lineHeight
+            if self.linkedScroller != None:
+                self.linkedScroller.refresh(False)
+            return surf
             
     class Image(Component):        
         def __init__(self, position, **data):
@@ -749,7 +782,7 @@ class GUI(object):
             
     class Button(Container):
         def __init__(self, position, text, bgColor=(20,20,20), textColor=(200,200,200), textSize=14, **data):
-            self.textComponent = GUI.Text((0, 0), text, textColor, textSize)
+            self.textComponent = GUI.Text((0, 0), text, textColor, textSize, font=data.get("font", state.getFont()))
             self.paddingAmount = 5
             if "padding" in data: self.paddingAmount = data["padding"]
             if "width" not in data: data["width"] = self.textComponent.width + (2 * self.paddingAmount)
@@ -787,8 +820,8 @@ class GUI(object):
                 data["borderColor"] = state.getColorPalette().getColor("item")
             super(GUI.KeyboardButton, self).__init__(position, **data)
             self.SKIP_CHILD_CHECK = True
-            self.primaryTextComponent = GUI.Text((0, 0), symbol, state.getColorPalette().getColor("item"), 20)
-            self.secondaryTextComponent = GUI.Text((self.width-8, 0), altSymbol, state.getColorPalette().getColor("item"), 10)
+            self.primaryTextComponent = GUI.Text((1, 0), symbol, state.getColorPalette().getColor("item"), 20, font=state.getTypingFont())
+            self.secondaryTextComponent = GUI.Text((self.width-8, 0), altSymbol, state.getColorPalette().getColor("item"), 10, font=state.getTypingFont())
             self.primaryTextComponent.setPosition([GUI.getCenteredCoordinates(self.primaryTextComponent, self)[0]-6, self.height-self.primaryTextComponent.height-1])
             self.addChild(self.primaryTextComponent)
             self.addChild(self.secondaryTextComponent)
@@ -816,38 +849,35 @@ class GUI(object):
             self.indicatorPxPosition = 0
             super(GUI.TextEntryField, self).__init__(position, **data)
             self.SKIP_CHILD_CHECK = True
-            self.textComponent = GUI.Text((2, 0), initialText, data["textColor"], 16)
+            self.textComponent = GUI.Text((2, 0), initialText, data["textColor"], 16, font=state.getTypingFont())
             self.textComponent.position[1] = GUI.getCenteredCoordinates(self.textComponent, self)[1]
             self.addChild(self.textComponent)
+            self.IS_MULTI_LINE = False
             
         def checkClick(self, mouseEvent, offsetX, offsetY):
             if not super(GUI.TextEntryField, self).checkClick(mouseEvent, offsetX, offsetY): return False
-            if state.getKeyboard() == None:
-                state.setKeyboard(GUI.Keyboard(self))
-            if state.getKeyboard().textEntryField != self:
-                state.getKeyboard().setTextEntryField(self)
-            else:
-                self.doBlink = True
-                mousePos = mouseEvent.pos[0] - offsetX
-                currFont = state.getFont().get(16)
-                pos = 0
-                textWidth = 0
-                rendered = None
-                if self.textComponent.text != "":
-                    perLetter = self.textComponent.width/len(self.textComponent.text)
-                    while pos < len(self.textComponent.text):
-                        rendered = currFont.render(self.textComponent.text[:pos], 1, self.textComponent.color)
-                        textWidth = rendered.get_width()
-                        if mousePos >= textWidth-perLetter and mousePos <= textWidth:
-                            break
-                        pos += 1
-                    if mousePos > textWidth:
-                        self.indicatorPosition = len(self.textComponent.text)
-                        self.doBlink = False
-                    else:
-                        self.indicatorPxPosition = textWidth - perLetter
-                        self.indicatorPosition = pos - 1
-                        self.doBlink = True
+            state.setKeyboard(GUI.Keyboard(self))
+            self.doBlink = True
+            mousePos = mouseEvent.pos[0] - offsetX
+            currFont = self.textComponent.font.get(16)
+            pos = 0
+            textWidth = 0
+            rendered = None
+            if self.textComponent.text != "":
+                perLetter = self.textComponent.width/len(self.textComponent.text)
+                while pos < len(self.textComponent.getTextComponent().text):
+                    rendered = currFont.render(self.textComponent.text[:pos], 1, self.textComponent.color)
+                    textWidth = rendered.get_width()
+                    if mousePos >= textWidth-perLetter and mousePos <= textWidth:
+                        break
+                    pos += 1
+                if mousePos > textWidth + perLetter:
+                    self.indicatorPosition = len(self.textComponent.text)
+                    self.doBlink = False
+                else:
+                    self.indicatorPxPosition = textWidth
+                    self.indicatorPosition = pos
+                    self.doBlink = True
             state.getKeyboard().active = True
             return self
             
@@ -890,7 +920,109 @@ class GUI(object):
             if self.checkClick(mouseEvent, offsetX, offsetY):
                 return self
             return None
+        
+    class MultiLineTextEntryField(TextEntryField):
+        def __init__(self, position, initialText="", **data):
+            super(GUI.MultiLineTextEntryField, self).__init__(position, initialText, **data)
+            self.removeChild(self.textComponent)
+            mlt = GUI.ExpandingMultiLineText((0, 0), initialText, data.get("textColor", state.getColorPalette().getColor("item")), data.get("size", 16), data.get("justification", 0), data.get("size", 16)+2,
+                                    width=self.width, height=self.height, font=state.getTypingFont())
+            self.textComponent = GUI.TextScrollableContainer((0, 0), mlt, width=self.width, height=self.height)
+            self.addChild(self.textComponent)
+            self.indicatorPosition = [len(self.textComponent.getTextComponent().textLines)-1 if initialText != "" else 0,
+                                      len(self.textComponent.getTextComponent().textLines[len(self.textComponent.getTextComponent().textLines)-1])-1 if initialText != "" else 0]
+            self.indicatorPxPosition = [0, 0]
+            self.IS_MULTI_LINE = True
             
+        def getText(self):
+            return self.textComponent.getTextComponent().text
+            
+        def checkClick(self, mouseEvent, offsetX, offsetY):
+            csb = self.textComponent.scrollBar.getClickedChild(mouseEvent, offsetX, offsetY)
+            if csb != None:
+                csb.onClick()
+                return
+            elif not self.textComponent.container.checkClick(mouseEvent, offsetX, offsetY): return False
+            state.setKeyboard(GUI.Keyboard(self, onEnter="newline"))
+            self.doBlink = True
+            mousePos = [mouseEvent.pos[0] - offsetX, mouseEvent.pos[1] - offsetY]
+            currFont = self.textComponent.getTextComponent().font.get(self.data.get("size", 16))
+            pos = [0, 0]
+            textWidth = 0
+            rendered = None
+            cum_lnheight = self.textComponent.minOffset
+            if self.textComponent.getTextComponent().text != "":
+                for line in self.textComponent.getTextComponent().textLines:
+                    lnHeight = currFont.render(line, 1, self.textComponent.getTextComponent().color).get_height()
+                    cum_lnheight += lnHeight
+                    if mousePos[1] >= cum_lnheight and mousePos[1] <= cum_lnheight + lnHeight:
+                        perLetter = self.textComponent.getTextComponent().width/len(line) if len(line) > 0 else self.data.get("size", 16)
+                        while pos[1] < len(line):
+                            rendered = currFont.render(line[:pos[1]], 1, self.textComponent.getTextComponent().color)
+                            textWidth = rendered.get_width()
+                            if mousePos[0] >= textWidth-perLetter and mousePos[0] <= textWidth:
+                                break
+                            pos[1] += 1
+                        if mousePos[0] > textWidth + perLetter:
+                            self.indicatorPosition = [pos[0], len(line)]
+                            self.doBlink = False
+                        else:
+                            self.indicatorPxPosition = [textWidth, pos[0] * lnHeight]
+                            self.indicatorPosition = pos
+                            self.doBlink = True
+                        break
+                    pos[0] += 1
+            state.getKeyboard().active = True
+            return self
+        
+        def getAbsoluteCaret(self):
+            cp = 0
+            ln = 0
+            for l in self.textComponent.getTextComponent().textLines:
+                if ln == self.indicatorPosition[0]:
+                    return cp + self.indicatorPosition[1]
+                ln += 1
+                cp += len(l)
+            return cp
+        
+        def appendChar(self, char):
+            self.doBlink = False
+            if char == "\n":
+                self.indicatorPosition = [self.indicatorPosition[0]+1, 0]
+            self.textComponent.getTextComponent().text = self.textComponent.getTextComponent().text[:self.getAbsoluteCaret()] + char + self.textComponent.getTextComponent().text[self.getAbsoluteCaret():]
+            self.textComponent.refresh()
+            
+        def backspace(self):
+            self.blinkOn = False
+            if self.getAbsoluteCaret() >= 1:
+                self.textComponent.getTextComponent().text = self.textComponent.getTextComponent().text[:self.getAbsoluteCaret()-1] + self.textComponent.getTextComponent().text[self.getAbsoluteCaret():]
+                self.textComponent.refresh()
+                if self.indicatorPosition[1] == 0:
+                    if self.indicatorPosition[0] > 0:
+                        self.indicatorPosition = [self.indicatorPosition[0] - 1, len(self.textComponent.getTextComponent().textLines[self.indicatorPosition[0] - 1])]
+                else:
+                    self.indicatorPosition[1] -= 1    
+                
+        def delete(self):
+            if self.getAbsoluteCaret() < len(self.textComponent.getTextComponent().text):
+                self.textComponent.getTextComponent().text = self.textComponent.getTextComponent().text[:self.getAbsoluteCaret()] + self.textComponent.getTextComponent().text[self.getAbsoluteCaret()+1:]
+                self.textComponent.refresh()
+                
+        def render(self, largerSurface):
+            if not self.transparent:
+                self.surface.fill(self.backgroundColor)
+            else:
+                self.surface.fill((0, 0, 0, 0))
+            for child in self.childComponents:
+                child.render(self.surface)
+            if self.doBlink:
+                if ((datetime.now() - self.lastBlink).microseconds / 1000) >= self.blinkInterval:
+                    self.lastBlink = datetime.now()
+                    self.blinkOn = not self.blinkOn
+                if self.blinkOn:
+                    pygame.draw.rect(self.surface, self.textComponent.getTextComponent().color, [self.indicatorPxPosition[0], self.indicatorPxPosition[1]+2, 2, self.textComponent.getTextComponent().lineHeight-4])
+            super(GUI.Container, self).render(largerSurface)
+
     class PagedContainer(Container):
         def __init__(self, position, **data):
             super(GUI.PagedContainer, self).__init__(position, **data)
@@ -1093,8 +1225,9 @@ class GUI(object):
             self.scrollDownBtn = GUI.Image((0, self.scrollBar.height-40), path="res/scrolldown.png", width=20, height=40,
                                          onClick=self.scroll, onClickData=(-self.scrollAmount,))
             self.scrollIndicator = GUI.ScrollIndicator(self, (0, 40), self.backgroundColor, width=20, height=self.scrollBar.height-80, border=1, borderColor=state.getColorPalette().getColor("item"))
+            if self.height >= 120:
+                self.scrollBar.addChild(self.scrollIndicator)
             self.scrollBar.addChild(self.scrollUpBtn)
-            self.scrollBar.addChild(self.scrollIndicator)
             self.scrollBar.addChild(self.scrollDownBtn)
             super(GUI.ScrollableContainer, self).addChild(self.container)
             super(GUI.ScrollableContainer, self).addChild(self.scrollBar)
@@ -1176,6 +1309,16 @@ class GUI(object):
         def render(self, largerSurface):
             super(GUI.ScrollableContainer, self).render(largerSurface)
             
+        def refresh(self, children=True):
+            self.minOffset = 0
+            for comp in self.container.childComponents:
+                if comp.position[1] < self.minOffset: self.minOffset = comp.position[1]
+            self.maxOffset = self.height
+            for comp in self.container.childComponents:
+                if comp.position[1]+comp.height > self.maxOffset: self.maxOffset = comp.position[1]+comp.height
+            self.scrollIndicator.update()
+            self.container.refresh(children)
+            
     class ListScrollableContainer(ScrollableContainer):
         def __init__(self, position, **data):
             self.margin = data.get("margin", 0)
@@ -1198,6 +1341,18 @@ class GUI(object):
             self.container.childComponents = []
             for child in childrenCopy:
                 self.addChild(child)
+                
+    class TextScrollableContainer(ScrollableContainer):
+        def __init__(self, position, textComponent=None, **data):
+            data["scrollAmount"] = data.get("lineHeight", textComponent.lineHeight if textComponent != None else 16)
+            super(GUI.TextScrollableContainer, self).__init__(position, **data)
+            self.textComponent = textComponent
+            if self.textComponent == None:
+                self.textComponent = GUI.ExpandingMultiLineText((0, 0), "", state.getColorPalette().getColor("item"), width=self.container.width, height=self.container.height, scroller=self)
+            self.addChild(self.textComponent)
+            
+        def getTextComponent(self):
+            return self.textComponent
    
     class FunctionBar(object):
         def __init__(self):
@@ -1333,7 +1488,8 @@ class GUI(object):
                 return
             if char == self.enter_sym:
                 if self.onEnter == "newline":
-                    pass #Only if is MultiLineTextEntryField
+                    if self.textEntryField.IS_MULTI_LINE:
+                        self.textEntryField.appendChar("\n")
                 else:
                     self.deactivate()
                 return
@@ -1944,7 +2100,7 @@ class NotificationQueue(object):
         self.notifications = []
                 
 class State(object):                  
-    def __init__(self, activeApp=None, colors=None, icons=None, controller=None, eventQueue=None, notificationQueue=None, functionbar=None, font=None, gui=None, appList=None, keyboard=None):
+    def __init__(self, activeApp=None, colors=None, icons=None, controller=None, eventQueue=None, notificationQueue=None, functionbar=None, font=None, tFont=None, gui=None, appList=None, keyboard=None):
         self.activeApplication = activeApp
         self.colorPalette = colors
         self.icons = icons
@@ -1953,6 +2109,7 @@ class State(object):
         self.notificationQueue = notificationQueue
         self.functionBar = functionbar
         self.font = font
+        self.typingFont = tFont
         self.appList = appList
         self.keyboard = keyboard
         self.recentAppSwitcher = None
@@ -1963,6 +2120,7 @@ class State(object):
         if eventQueue == None: self.eventQueue = GUI.EventQueue()
         if notificationQueue == None: self.notificationQueue = NotificationQueue()
         if font == None: self.font = GUI.Font()
+        if tFont == None: self.typingFont = GUI.Font("res/RobotoMono-Regular.ttf")
         
     def getActiveApplication(self): return self.activeApplication
     def getColorPalette(self): return self.colorPalette
@@ -1971,6 +2129,7 @@ class State(object):
     def getEventQueue(self): return self.eventQueue
     def getNotificationQueue(self): return self.notificationQueue
     def getFont(self): return self.font
+    def getTypingFont(self): return self.typingFont
     def getGUI(self): return self.gui
     def getApplicationList(self): 
         if self.appList == None: self.appList = ApplicationList()
@@ -1988,6 +2147,7 @@ class State(object):
     def setNotificationQueue(self, queue): self.notificationQueue = queue
     def setFunctionBar(self, bar): self.functionBar = bar
     def setFont(self, font): self.font = font
+    def setTypingFont(self, tfont): self.typingFont = tfont
     def setGUI(self, gui): self.gui = gui
     def setApplicationList(self, appList): self.appList = appList
     def setKeyboard(self, keyboard): self.keyboard = keyboard
@@ -2000,7 +2160,7 @@ class State(object):
     def exit():
         state.getThreadController().stopAllThreads()
         pygame.quit()
-        exit()
+        os._exit(1)
         
     @staticmethod
     def rescue():
@@ -2080,6 +2240,8 @@ class State(object):
         screen.blit(sf.render(message, 1, (200, 200, 200)), [20, 160])
         pygame.draw.rect(screen, [200, 200, 200], [0, 280, 240, 40])
         screen.blit(sf.render("Return to Python OS", 1, (20, 20, 20)), [20, 292])
+        pygame.draw.rect(screen, [50, 50, 50], [0, 240, 240, 40])
+        screen.blit(sf.render("Open Recovery Menu", 1, (200, 200, 200)), [20, 252])
         rClock = pygame.time.Clock()
         pygame.display.flip()
         while True:
@@ -2092,6 +2254,9 @@ class State(object):
                         exit()
                 if evt.type == pygame.MOUSEBUTTONDOWN:
                     if evt.pos[1] >= 280:
+                        return
+                    elif evt.pos[1] >= 240:
+                        State.rescue()
                         return
     
     @staticmethod
@@ -2147,7 +2312,7 @@ class State(object):
                             clickedChild.onLongClick()
                         else:
                             clickedChild.onClick()
-                    except not SystemExit:
+                    except:
                         State.error_recovery("Event execution error", "Click event: "+str(latestEvent))
             
     @staticmethod
@@ -2177,5 +2342,5 @@ if __name__ == "__main__":
     state.getApplicationList().getApp("home").activate()
     try:
         State.main()
-    except not SystemExit:
+    except:
         State.error_recovery("Fatal system error.")
