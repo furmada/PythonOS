@@ -388,9 +388,18 @@ class GUI(object):
             self.mouseUpTime = datetime.now()
             self.pos = self.mouseUp.pos
             
+        def getLatestUpdate(self):
+            if len(self.intermediatePoints) == 0: return self.pos
+            else: return self.intermediatePoints[len(self.intermediatePoints) - 1]
+            
         def checkValidLongClick(self, time=300): #Checks timestamps against parameter (in milliseconds)
             delta = self.mouseUpTime - self.mouseDownTime
             return (delta.microseconds / 1000) >= time
+        
+    class IntermediateUpdateEvent(object):
+        def __init__(self, pos, src):
+            self.pos = pos
+            self.sourceEvent = src
         
     class EventQueue(object):
         def __init__(self):
@@ -413,6 +422,10 @@ class GUI(object):
             if len(self.events) == 0: return None
             return self.events.pop()
         
+        def removeEvent(self, ev):
+            if ev in self.events:
+                self.events.remove(ev)
+        
         def getLatestComplete(self):
             if len(self.events) == 0: return None
             p = len(self.events) - 1
@@ -421,6 +434,8 @@ class GUI(object):
                 if isinstance(event, GUI.LongClickEvent):
                     if event.mouseUp != None:
                         return self.events.pop(p)
+                    else:
+                        return GUI.IntermediateUpdateEvent(self.events[len(self.events) - 1].getLatestUpdate(), self.events[len(self.events) - 1])
                 else:
                     return self.events.pop(p)
                 p -= 1
@@ -459,7 +474,9 @@ class GUI(object):
                 self.surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
             if "onClick" in data: self.eventBindings["onClick"] = data["onClick"]
             if "onLongClick" in data: self.eventBindings["onLongClick"] = data["onLongClick"]
+            if "onIntermediateUpdate" in data: self.eventBindings["onIntermediateUpdate"] = data["onIntermediateUpdate"]
             if "onClickData" in data: self.eventData["onClick"] = data["onClickData"]
+            if "onIntermediateUpdateData" in data: self.eventData["onIntermediateUpdate"] = data["onIntermediateUpdateData"]
             if "onLongClickData" in data: self.eventData["onLongClick"] = data["onLongClickData"]
             if "border" in data: 
                 self.border = int(data["border"])
@@ -468,24 +485,25 @@ class GUI(object):
             
         def onClick(self):
             if "onClick" in self.eventBindings: 
-                try:
-                    if "onClick" in self.eventData:
-                        self.eventBindings["onClick"](*self.eventData["onClick"])
-                    else:
-                        self.eventBindings["onClick"]()
-                except:
-                    State.error_recovery("Click event error.", "Component rect: "+str([self.position[0], self.position[1], self.width, self.height]))
+                if "onClick" in self.eventData:
+                    self.eventBindings["onClick"](*self.eventData["onClick"])
+                else:
+                    self.eventBindings["onClick"]()
             
         def onLongClick(self):
             if "onLongClick" in self.eventBindings:
-                try:
-                    if "onLongClick" in self.eventData:
-                        self.eventBindings["onLongClick"](*self.eventData["onLongClick"])
+                if "onLongClick" in self.eventData:
+                    self.eventBindings["onLongClick"](*self.eventData["onLongClick"])
+                else:
+                    self.eventBindings["onLongClick"]()
+                    
+        def onIntermediateUpdate(self):
+            if "onIntermediateUpdate" in self.eventBindings: 
+                    if "onIntermediateUpdate" in self.eventData:
+                        self.eventBindings["onIntermediateUpdate"](*self.eventData["onIntermediateUpdate"])
                     else:
-                        self.eventBindings["onLongClick"]()
-                except:
-                    State.error_recovery("LongClick event error", "Component rect: "+str([self.position[0], self.position[1], self.width, self.height]))
-            
+                        self.eventBindings["onIntermediateUpdate"]()
+
         def render(self, largerSurface):
             if self.border > 0:
                 pygame.draw.rect(self.surface, self.borderColor, [0, 0, self.width, self.height], self.border)
@@ -503,7 +521,8 @@ class GUI(object):
             if adjusted[0] >= self.position[0] and adjusted[0] <= self.position[0] + self.width:
                 if adjusted[1] >= self.position[1] and adjusted[1] <= self.position[1] + self.height:
                     self.innerClickCoordinates = tuple(adjusted)
-                    self.data["lastEvent"] = mouseEvent
+                    if not isinstance(mouseEvent, GUI.IntermediateUpdateEvent):
+                        self.data["lastEvent"] = mouseEvent
                     return True
             return False
         
@@ -1200,9 +1219,13 @@ class GUI(object):
                 
     class ScrollIndicator(Component):
         def __init__(self, scrollCont, position, color, **data):
+            data["onIntermediateUpdate"] = self.dragScroll
+            data["onClick"] = self.clearScrollParams
+            data["onLongClick"] = self.clearScrollParams
             super(GUI.ScrollIndicator, self).__init__(position, **data)
             self.scrollContainer = scrollCont
             self.color = color
+            self.lastClickCoord = None
             
         def update(self):
             self.pct = 1.0 * self.scrollContainer.height / self.scrollContainer.maxOffset
@@ -1213,6 +1236,15 @@ class GUI(object):
             self.surface.fill(self.color)
             pygame.draw.rect(self.surface, state.getColorPalette().getColor("accent"), [0, int(self.slide*(1.0*self.height/self.scrollContainer.height)), self.width, int(self.sih)])
             super(GUI.ScrollIndicator, self).render(largerSurface)
+            
+        def clearScrollParams(self):
+            self.lastClickCoord = None
+            
+        def dragScroll(self):
+            if self.lastClickCoord != None:
+                ydist = self.innerClickCoordinates[1] - self.lastClickCoord[1]
+                self.scrollContainer.scroll(ydist)
+            self.lastClickCoord = self.innerClickCoordinates
                             
     class ScrollableContainer(Container):
         def __init__(self, position, **data): 
@@ -1237,8 +1269,14 @@ class GUI(object):
             self.scrollIndicator.update()
             
         def scroll(self, amount):
-            #if amount < 0 and self.offset + amount < self.minOffset: return
-            #if amount > 0 and self.offset + amount > self.maxOffset: return
+            if amount < 0:
+                if self.offset - amount - self.height <= -self.maxOffset:
+                    self.scrollTo(-self.maxOffset + self.height)
+                    return
+            else:
+                if self.offset + amount > self.minOffset:
+                    self.scrollTo(self.minOffset)
+                    return
             for child in self.container.childComponents:
                 child.position[1] = child.position[1]+amount
             self.offset += amount
@@ -2315,7 +2353,10 @@ class State(object):
                         if isinstance(latestEvent, GUI.LongClickEvent):
                             clickedChild.onLongClick()
                         else:
-                            clickedChild.onClick()
+                            if isinstance(latestEvent, GUI.IntermediateUpdateEvent):
+                                clickedChild.onIntermediateUpdate()
+                            else:
+                                clickedChild.onClick()
                     except:
                         State.error_recovery("Event execution error", "Click event: "+str(latestEvent))
             
