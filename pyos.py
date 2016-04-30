@@ -195,7 +195,10 @@ class GUI(object):
             screen = pygame.display.set_mode((240, 320), pygame.HWACCEL)
             self.width = screen.get_width()
             self.height = screen.get_height()
-        screen.blit(pygame.font.Font(None, 20).render("Loading Python OS 6...", 1, (200, 200, 200)), [5, 5])
+        try:
+            screen.blit(pygame.image.load("res/splash2.png"), [0, 0])
+        except:
+            screen.blit(pygame.font.Font(None, 20).render("Loading Python OS 6...", 1, (200, 200, 200)), [5, 5])
         pygame.display.flip()
         __builtin__.screen = screen
         globals()["screen"] = screen
@@ -377,7 +380,7 @@ class GUI(object):
             self.mouseUp = None
             self.mouseUpTime = None
             self.intermediatePoints = []
-            self.pos = (-1, -1)
+            self.pos = self.mouseDown.pos
             
         def intermediateUpdate(self, mouseMove):
             if self.mouseUp == None:
@@ -825,12 +828,9 @@ class GUI(object):
                 return self
             return None
         
-    class Canvas(Container):
+    class Canvas(Component):
         def __init__(self, position, **data):
             super(GUI.Canvas, self).__init__(position, **data)
-            
-        def getSurface(self):
-            return self.surface
         
     class KeyboardButton(Container):
         def __init__(self, position, symbol, altSymbol, **data):
@@ -1926,6 +1926,25 @@ class Application(object):
         listingsfile.close()
         return app_name
     
+    @staticmethod
+    def registerDebugAppAsk():
+        state.getApplicationList().getApp("files").getModule().FolderPicker((10, 10), width=220, height=260, onSelect=Application.registerDebugApp,
+                                                                            startFolder="apps/").display()
+        
+    @staticmethod
+    def registerDebugApp(path):
+        app_listing = open(os.path.join(path, "app.json"), "rU")
+        app_info = json.loads(str(unicode(app_listing.read(), errors="ignore")))
+        app_listing.close()
+        app_name = str(app_info.get("name"))
+        alist = Application.getListings()
+        alist[os.path.join("apps/", app_name)] = app_name
+        listingsfile = open("apps/apps.json", "w")
+        json.dump(alist, listingsfile)
+        listingsfile.close()
+        state.getApplicationList().reloadList()
+        GUI.OKDialog("Registered", "The application from "+path+" has been registered on the system.").display()
+    
     def __init__(self, location):
         self.parameters = {}
         self.location = location
@@ -2030,7 +2049,10 @@ class ApplicationList(object):
         self.activeApplications = []
         applist = Application.getListings()
         for key in dict(applist).keys():
-            self.applications[applist.get(key)] = Application(key)
+            try:
+                self.applications[applist.get(key)] = Application(key)
+            except:
+                State.error_recovery("App init error: "+key, "NoAppDump")
             
     def getApp(self, name):
         if name in self.applications:
@@ -2069,7 +2091,10 @@ class ApplicationList(object):
         applist = Application.getListings()
         for key in dict(applist).keys():
             if applist.get(key) not in self.applications.keys():
-                self.applications[applist.get(key)] = Application(key)
+                try:
+                    self.applications[applist.get(key)] = Application(key)
+                except:
+                    State.error_recovery("App init error: "+key, "NoAppDump")
         for key in self.applications.keys():
             if key not in applist.values():
                 del self.applications[key]
@@ -2268,7 +2293,7 @@ class State(object):
         screen.blit(rf.render("Failure detected.", 1, (200, 200, 200)), [20, 20])
         f = open("temp/last_error.txt", "w")
         txt = "Python OS 6 Error Report\nTIME: "+str(datetime.now())
-        txt += "\n\nOpen Applications: "+str([a.name for a in state.getApplicationList().activeApplications])
+        txt += "\n\nOpen Applications: "+(str([a.name for a in state.getApplicationList().activeApplications]) if data != "NoAppDump" else "Not Yet Initialized")
         txt += "\nMessage: "+message
         txt += "\nAdditional Data:\n"
         txt += str(data)
