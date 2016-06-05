@@ -485,8 +485,12 @@ class GUI(object):
                 self.border = int(data["border"])
                 if "borderColor" in data: self.borderColor = data["borderColor"]
             self.innerClickCoordinates = (-1, -1)
+            self.innerOffset = [0, 0]
+            self.internalClickOverrides = {}
             
         def onClick(self):
+            if "onClick" in self.internalClickOverrides:
+                self.internalClickOverrides["onClick"][0](*self.internalClickOverrides["onClick"][1])
             if "onClick" in self.eventBindings: 
                 if "onClick" in self.eventData:
                     self.eventBindings["onClick"](*self.eventData["onClick"])
@@ -494,6 +498,8 @@ class GUI(object):
                     self.eventBindings["onClick"]()
             
         def onLongClick(self):
+            if "onLongClick" in self.internalClickOverrides:
+                self.internalClickOverrides["onLongClick"][0](*self.internalClickOverrides["onLongClick"][1])
             if "onLongClick" in self.eventBindings:
                 if "onLongClick" in self.eventData:
                     self.eventBindings["onLongClick"](*self.eventData["onLongClick"])
@@ -501,11 +507,25 @@ class GUI(object):
                     self.eventBindings["onLongClick"]()
                     
         def onIntermediateUpdate(self):
+            if "onIntermediateUpdate" in self.internalClickOverrides:
+                self.internalClickOverrides["onIntermediateUpdate"][0](*self.internalClickOverrides["onIntermediateUpdate"][1])
             if "onIntermediateUpdate" in self.eventBindings: 
                     if "onIntermediateUpdate" in self.eventData:
                         self.eventBindings["onIntermediateUpdate"](*self.eventData["onIntermediateUpdate"])
                     else:
                         self.eventBindings["onIntermediateUpdate"]()
+                        
+        def setOnClick(self, mtd, data=()):
+            self.eventBindings["onClick"] = mtd
+            self.eventData["onClick"] = data
+            
+        def setOnLongClick(self, mtd, data=()):
+            self.eventBindings["onLongClick"] = mtd
+            self.eventData["onLong"] = data
+        
+        def setOnIntermediateUpdate(self, mtd, data=()):
+            self.eventBindings["onIntermediateUpdate"] = mtd
+            self.eventData["onIntermediateUpdate"] = data
 
         def render(self, largerSurface):
             if self.border > 0:
@@ -519,6 +539,7 @@ class GUI(object):
             return self.innerClickCoordinates
             
         def checkClick(self, mouseEvent, offsetX=0, offsetY=0):
+            self.innerOffset = [offsetX, offsetY]
             adjusted = [mouseEvent.pos[0] - offsetX, mouseEvent.pos[1] - offsetY]
             if adjusted[0] < 0 or adjusted[1] < 0: return False
             if adjusted[0] >= self.position[0] and adjusted[0] <= self.position[0] + self.width:
@@ -828,6 +849,35 @@ class GUI(object):
                 return self
             return None
         
+    class Checkbox(Component):
+        def __init__(self, position, checked=False, **data):
+            if "border" not in data:
+                data["border"] = 2
+                data["borderColor"] = state.getColorPalette().getColor("item")
+            super(GUI.Checkbox, self).__init__(position, **data)
+            self.backgroundColor = data.get("backgroundColor", state.getColorPalette().getColor("background"))
+            self.checkColor = data.get("checkColor", state.getColorPalette().getColor("accent"))
+            self.checkWidth = data.get("checkWidth", self.height/4)
+            self.checked = checked
+            self.internalClickOverrides["onClick"] = [self.check, ()]
+            
+        def getChecked(self):
+            return self.checked
+        
+        def check(self, state="toggle"):
+            if state == "toggle":
+                self.checked = not self.checked
+            else:
+                self.checked = bool(state)
+            
+        def render(self, largerSurface):
+            self.surface.fill(self.backgroundColor)
+            if self.checked:
+                pygame.draw.lines(self.surface, self.checkColor, False, [(0, self.height/2),
+                                                                         (self.width/2, self.height-self.checkWidth/2),
+                                                                         (self.width, 0)], self.checkWidth)
+            super(GUI.Checkbox, self).render(largerSurface)
+        
     class Canvas(Component):
         def __init__(self, position, **data):
             super(GUI.Canvas, self).__init__(position, **data)
@@ -852,6 +902,8 @@ class GUI(object):
         
     class TextEntryField(Container):
         def __init__(self, position, initialText="", **data):
+            data["onIntermediateUpdate"] = self.dragScroll
+            data["onClick"] = self.activate
             if "border" not in data:
                 data["border"] = 1
                 data["borderColor"] = state.getColorPalette().getColor("accent")
@@ -869,16 +921,31 @@ class GUI(object):
             super(GUI.TextEntryField, self).__init__(position, **data)
             self.SKIP_CHILD_CHECK = True
             self.textComponent = GUI.Text((2, 0), initialText, data["textColor"], 16, font=state.getTypingFont())
+            self.updateOverflow()
+            self.lastClickCoord = None
             self.textComponent.position[1] = GUI.getCenteredCoordinates(self.textComponent, self)[1]
             self.addChild(self.textComponent)
-            self.IS_MULTI_LINE = False
+            self.MULTILINE = None
             
-        def checkClick(self, mouseEvent, offsetX, offsetY):
-            if not super(GUI.TextEntryField, self).checkClick(mouseEvent, offsetX, offsetY): return False
+        def clearScrollParams(self):
+            self.lastClickCoord = None
+            
+        def dragScroll(self):
+            if self.lastClickCoord != None and self.overflow > 0:
+                ydist = self.innerClickCoordinates[1] - self.lastClickCoord[1]
+                self.overflow -= ydist
+                if self.overflow > 0 and self.overflow + self.width < self.textComponent.width:
+                    self.textComponent.position[0] = 2 - self.overflow
+                else:
+                    self.textComponent.position[0] = 2
+            self.lastClickCoord = self.innerClickCoordinates
+            
+        def activate(self):
+            self.clearScrollParams()
             state.setKeyboard(GUI.Keyboard(self))
             self.doBlink = True
-            mousePos = mouseEvent.pos[0] - offsetX
-            currFont = self.textComponent.font.get(16)
+            mousePos = self.innerClickCoordinates[0] - self.innerOffset[0]
+            currFont = state.getTypingFont().get(16)
             pos = 0
             textWidth = 0
             rendered = None
@@ -887,10 +954,10 @@ class GUI(object):
                 while pos < len(self.textComponent.text):
                     rendered = currFont.render(self.textComponent.text[:pos], 1, self.textComponent.color)
                     textWidth = rendered.get_width()
-                    if mousePos >= textWidth-perLetter and mousePos <= textWidth:
+                    if mousePos >= textWidth-self.overflow-perLetter and mousePos <= textWidth-self.overflow:
                         break
                     pos += 1
-                if mousePos > textWidth + perLetter:
+                if mousePos > textWidth:
                     self.indicatorPosition = len(self.textComponent.text)
                     self.doBlink = False
                 else:
@@ -898,24 +965,47 @@ class GUI(object):
                     self.indicatorPosition = pos
                     self.doBlink = True
             state.getKeyboard().active = True
+            if self.MULTILINE:
+                self.MULTILINE.setCurrent(self)
             return self
+        
+        def updateOverflow(self):
+            self.overflow = self.textComponent.width - (self.width - 4)
+            if self.overflow > 0:
+                self.textComponent.position[0] = 2 - self.overflow
+            else:
+                self.textComponent.position[0] = 2
             
         def appendChar(self, char):
             self.doBlink = False
             self.textComponent.text = self.textComponent.text[:self.indicatorPosition] + char + self.textComponent.text[self.indicatorPosition:]
             self.textComponent.refresh()
             self.indicatorPosition += 1
+            self.updateOverflow()
+            if self.MULTILINE != None:
+                if self.overflow > 2:
+                    newt = self.textComponent.text[max(self.textComponent.text.rfind(" "),
+                                                       self.textComponent.text.rfind("-"),
+                                                       self.textComponent.text.rfind("."))+1:]
+                    self.MULTILINE.addField(newt)
+                    self.textComponent.text.rstrip(newt)
+                    self.updateOverflow()
             
         def backspace(self):
             if self.indicatorPosition >= 1:
                 self.indicatorPosition -= 1
+                self.indicatorPxPosition -= self.textComponent.width/len(self.textComponent.text)
                 self.textComponent.text = self.textComponent.text[:self.indicatorPosition] + self.textComponent.text[self.indicatorPosition+1:]
                 self.textComponent.refresh()
+            self.updateOverflow()
                 
         def delete(self):
             if self.indicatorPosition < len(self.textComponent.text):
                 self.textComponent.text = self.textComponent.text[:self.indicatorPosition] + self.textComponent.text[self.indicatorPosition+1:]
                 self.textComponent.refresh()
+            self.updateOverflow()
+            if self.MULTILINE != None:
+                self.appendChar(self.MULTILINE.getDeleteChar())
                 
         def getText(self):
             return self.textComponent.text
@@ -939,108 +1029,6 @@ class GUI(object):
             if self.checkClick(mouseEvent, offsetX, offsetY):
                 return self
             return None
-        
-    class MultiLineTextEntryField(TextEntryField):
-        def __init__(self, position, initialText="", **data):
-            super(GUI.MultiLineTextEntryField, self).__init__(position, initialText, **data)
-            self.removeChild(self.textComponent)
-            mlt = GUI.ExpandingMultiLineText((0, 0), initialText, data.get("textColor", state.getColorPalette().getColor("item")), data.get("size", 16), data.get("justification", 0), data.get("size", 16)+2,
-                                    width=self.width, height=self.height, font=state.getTypingFont())
-            self.textComponent = GUI.TextScrollableContainer((0, 0), mlt, width=self.width, height=self.height)
-            self.addChild(self.textComponent)
-            self.indicatorPosition = [len(self.textComponent.getTextComponent().textLines)-1 if initialText != "" else 0,
-                                      len(self.textComponent.getTextComponent().textLines[len(self.textComponent.getTextComponent().textLines)-1])-1 if initialText != "" else 0]
-            self.indicatorPxPosition = [0, 0]
-            self.IS_MULTI_LINE = True
-            
-        def getText(self):
-            return self.textComponent.getTextComponent().text
-            
-        def checkClick(self, mouseEvent, offsetX, offsetY):
-            csb = self.textComponent.scrollBar.getClickedChild(mouseEvent, offsetX, offsetY)
-            if csb != None:
-                csb.onClick()
-                return
-            elif not self.textComponent.container.checkClick(mouseEvent, offsetX, offsetY): return False
-            state.setKeyboard(GUI.Keyboard(self, onEnter="newline"))
-            self.doBlink = True
-            mousePos = [mouseEvent.pos[0] - offsetX, mouseEvent.pos[1] - offsetY]
-            currFont = self.textComponent.getTextComponent().font.get(self.data.get("size", 16))
-            pos = [0, 0]
-            textWidth = 0
-            rendered = None
-            cum_lnheight = self.textComponent.minOffset
-            if self.textComponent.getTextComponent().text != "":
-                for line in self.textComponent.getTextComponent().textLines:
-                    lnHeight = currFont.render(line, 1, self.textComponent.getTextComponent().color).get_height()
-                    cum_lnheight += lnHeight
-                    if mousePos[1] >= cum_lnheight and mousePos[1] <= cum_lnheight + lnHeight:
-                        perLetter = self.textComponent.getTextComponent().width/len(line) if len(line) > 0 else self.data.get("size", 16)
-                        while pos[1] < len(line):
-                            rendered = currFont.render(line[:pos[1]], 1, self.textComponent.getTextComponent().color)
-                            textWidth = rendered.get_width()
-                            if mousePos[0] >= textWidth-perLetter and mousePos[0] <= textWidth:
-                                break
-                            pos[1] += 1
-                        if mousePos[0] > textWidth + perLetter:
-                            self.indicatorPosition = [pos[0], len(line)]
-                            self.doBlink = False
-                        else:
-                            self.indicatorPxPosition = [textWidth, pos[0] * lnHeight]
-                            self.indicatorPosition = pos
-                            self.doBlink = True
-                        break
-                    pos[0] += 1
-            state.getKeyboard().active = True
-            return self
-        
-        def getAbsoluteCaret(self):
-            cp = 0
-            ln = 0
-            for l in self.textComponent.getTextComponent().textLines:
-                if ln == self.indicatorPosition[0]:
-                    return cp + self.indicatorPosition[1]
-                ln += 1
-                cp += len(l)
-            return cp
-        
-        def appendChar(self, char):
-            self.doBlink = False
-            if char == "\n":
-                self.indicatorPosition = [self.indicatorPosition[0]+1, 0]
-            self.textComponent.getTextComponent().text = self.textComponent.getTextComponent().text[:self.getAbsoluteCaret()] + char + self.textComponent.getTextComponent().text[self.getAbsoluteCaret():]
-            self.textComponent.refresh()
-            
-        def backspace(self):
-            self.blinkOn = False
-            if self.getAbsoluteCaret() >= 1:
-                self.textComponent.getTextComponent().text = self.textComponent.getTextComponent().text[:self.getAbsoluteCaret()-1] + self.textComponent.getTextComponent().text[self.getAbsoluteCaret():]
-                self.textComponent.refresh()
-                if self.indicatorPosition[1] == 0:
-                    if self.indicatorPosition[0] > 0:
-                        self.indicatorPosition = [self.indicatorPosition[0] - 1, len(self.textComponent.getTextComponent().textLines[self.indicatorPosition[0] - 1])]
-                else:
-                    self.indicatorPosition[1] -= 1    
-                
-        def delete(self):
-            if self.getAbsoluteCaret() < len(self.textComponent.getTextComponent().text):
-                self.textComponent.getTextComponent().text = self.textComponent.getTextComponent().text[:self.getAbsoluteCaret()] + self.textComponent.getTextComponent().text[self.getAbsoluteCaret()+1:]
-                self.textComponent.refresh()
-                
-        def render(self, largerSurface):
-            if not self.transparent:
-                self.surface.fill(self.backgroundColor)
-            else:
-                self.surface.fill((0, 0, 0, 0))
-            for child in self.childComponents:
-                child.render(self.surface)
-            if self.doBlink:
-                if ((datetime.now() - self.lastBlink).microseconds / 1000) >= self.blinkInterval:
-                    self.lastBlink = datetime.now()
-                    self.blinkOn = not self.blinkOn
-                if self.blinkOn:
-                    pygame.draw.rect(self.surface, self.textComponent.getTextComponent().color, [self.indicatorPxPosition[0], self.indicatorPxPosition[1]+2, 2, self.textComponent.getTextComponent().lineHeight-4])
-            super(GUI.Container, self).render(largerSurface)
 
     class PagedContainer(Container):
         def __init__(self, position, **data):
@@ -1395,6 +1383,72 @@ class GUI(object):
             
         def getTextComponent(self):
             return self.textComponent
+        
+    class MultiLineTextEntryField(ListScrollableContainer):
+        def __init__(self, position, initialText="", **data):
+            if "border" not in data:
+                data["border"] = 1
+                data["borderColor"] = state.getColorPalette().getColor("accent")
+            data["onClick"] = self.activateLast
+            data["onClickData"] = ()
+            super(GUI.MultiLineTextEntryField, self).__init__(position, **data)
+            self.lineHeight = data.get("lineHeight", 20)
+            self.maxLines = data.get("maxLines", -2)
+            self.backgroundColor = data.get("backgroundColor", state.getColorPalette().getColor("background"))
+            self.textColor = data.get("color", state.getColorPalette().getColor("item"))
+            self.textFields = []
+            self.currentField = -1
+            for line in initialText.replace("\r", "").split("\n"):
+                self.addField(line)
+            
+        def activateLast(self):
+            self.currentField = len(self.textFields) - 1
+            self.textFields[self.currentField].activate()
+            
+        def refresh(self):
+            self.clearChildren()
+            for tf in self.textFields:
+                self.addChild(tf)
+            
+        def setCurrent(self, field):
+            self.currentField = self.textFields.index(field)
+            
+        def addField(self, initial_text):
+            if len(self.textFields) == self.maxLines: return
+            field = GUI.TextEntryField((0, 0), initial_text, width=self.container.width, height=self.lineHeight,
+                                       backgroundColor=self.backgroundColor, textColor=self.textColor)
+            field.border = 0
+            field.MULTILINE = self
+            self.currentField += 1
+            self.textFields.insert(self.currentField, field)
+            self.refresh()
+            
+        def removeField(self, field):
+            if self.currentField > 0:
+                if self.textFields.index(field) == self.currentField:
+                    self.currentField -= 1
+                self.textFields.remove(field)
+            self.refresh()
+                
+        def getDeleteChar(self):
+            if self.currentField < len(self.textFields) - 1:
+                c = ""
+                try:
+                    c = self.textFields[self.currentField + 1].textComponent.text[0]
+                    self.textFields[self.currentField + 1].textComponent.text = self.textFields[self.currentField + 1].textComponent.text[1:]
+                    self.textFields[self.currentField + 1].updateOverflow()
+                    self.textFields[self.currentField + 1].refresh()
+                except:
+                    self.removeField(self.textFields[self.currentField + 1])
+                return c
+            return ""
+                
+        def getText(self):
+            t = ""
+            for ftext in [f.getText() for f in self.textFields]:
+                t += ftext + "\n"
+            t.rstrip("\n")
+            return t
    
     class FunctionBar(object):
         def __init__(self):
@@ -1442,8 +1496,7 @@ class GUI(object):
                 self.recentAppSwitcher.display()
             
     class Keyboard(object):
-        def __init__(self, textEntryField=None, onEnter="return"):
-            self.onEnter = onEnter
+        def __init__(self, textEntryField=None):
             self.shiftUp = False
             self.active = False
             self.textEntryField = textEntryField
@@ -1498,9 +1551,6 @@ class GUI(object):
                     self.baseContainer.addChild(button)
                     sym += 1
                 row += 1
-                
-        def setOnEnter(self, value="return"):
-            self.onEnter = value
             
         def deactivate(self):
             self.active = False
@@ -1529,11 +1579,12 @@ class GUI(object):
                     button.primaryTextComponent.refresh()
                 return
             if char == self.enter_sym:
-                if self.onEnter == "newline":
-                    if self.textEntryField.IS_MULTI_LINE:
-                        self.textEntryField.appendChar("\n")
-                else:
-                    self.deactivate()
+                mult = self.textEntryField.MULTILINE
+                self.deactivate()
+                if mult != None:
+                    mult.textFields[mult.currentField].doBlink = False
+                    mult.addField("")
+                    mult.textFields[mult.currentField].activate()
                 return
             if char == self.bkspc_sym:
                 self.textEntryField.backspace()
@@ -1560,10 +1611,10 @@ class GUI(object):
             self.text = text
             self.response = None
             self.baseContainer = GUI.Container((0, 0), width=state.getGUI().width, height=state.getActiveApplication().ui.height, color=(0, 0, 0, 0))
-            self.container = GUI.Container((0, 50), width=state.getGUI().width, height=140, color=state.getColorPalette().getColor("background"), border=2, borderColor=state.getColorPalette().getColor("accent"))
+            self.container = GUI.Container((0, 50), width=state.getGUI().width, height=130, color=state.getColorPalette().getColor("background"), border=2, borderColor=state.getColorPalette().getColor("accent"))
             self.buttonList = actionButtons
-            self.textComponent = GUI.MultiLineText((2, 2), self.text, state.getColorPalette().getColor("item"), 16, width=self.container.width-4, height=108)
-            self.buttonRow = GUI.ButtonRow((2, 108), width=state.getGUI().width, height=30, color=(0, 0, 0, 0))
+            self.textComponent = GUI.MultiLineText((2, 2), self.text, state.getColorPalette().getColor("item"), 16, width=self.container.width-4, height=96)
+            self.buttonRow = GUI.ButtonRow((0, 96), width=state.getGUI().width, height=40, color=(0, 0, 0, 0), padding=0, margin=0)
             for button in self.buttonList:
                 self.buttonRow.addChild(button)
             self.container.addChild(self.textComponent)
@@ -1592,29 +1643,29 @@ class GUI(object):
     class OKDialog(Dialog):
         def __init__(self, title, text, onResposeRecorded=None):
             okbtn = GUI.Button((0,0), "OK", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
-                               width=100, onClick=self.recordResponse, onClickData=("OK",))
+                               width=state.getGUI().width, height=40, onClick=self.recordResponse, onClickData=("OK",))
             super(GUI.OKDialog, self).__init__(title, text, [okbtn], onResposeRecorded)
             
     class ErrorDialog(Dialog):
         def __init__(self, text, onResposeRecorded=None):
             okbtn = GUI.Button((0,0), "Acknowledged", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
-                               width=120, onClick=self.recordResponse, onClickData=("Acknowledged",))
+                               width=state.getGUI().width, height=40, onClick=self.recordResponse, onClickData=("Acknowledged",))
             super(GUI.ErrorDialog, self).__init__("Error", text, [okbtn], onResposeRecorded)
             self.container.backgroundColor = state.getColorPalette().getColor("error")
             
     class WarningDialog(Dialog):
         def __init__(self, text, onResposeRecorded=None):
             okbtn = GUI.Button((0,0), "OK", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
-                               width=100, onClick=self.recordResponse, onClickData=("OK",))
+                               width=state.getGUI().width, height=40, onClick=self.recordResponse, onClickData=("OK",))
             super(GUI.WarningDialog, self).__init__("Warning", text, [okbtn], onResposeRecorded)
             self.container.backgroundColor = state.getColorPalette().getColor("warning")
             
     class YNDialog(Dialog):
         def __init__(self, title, text, onResponseRecorded=None, onResponseRecordedData=()):
-            ybtn = GUI.Button((0,0), "Yes", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
-                               width=50, onClick=self.recordResponse, onClickData=("Yes",))
+            ybtn = GUI.Button((0,0), "Yes", (200, 250, 200), (50, 50, 50), 18,
+                               width=(state.getGUI().width/2), height=40, onClick=self.recordResponse, onClickData=("Yes",))
             nbtn = GUI.Button((0,0), "No", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
-                               width=50, onClick=self.recordResponse, onClickData=("No",))
+                               width=(state.getGUI().width/2), height=40, onClick=self.recordResponse, onClickData=("No",))
             super(GUI.YNDialog, self).__init__(title, text, [ybtn, nbtn], onResponseRecorded)
             self.onResponseRecordedData = onResponseRecordedData
             
@@ -1626,10 +1677,10 @@ class GUI(object):
             
     class OKCancelDialog(Dialog):
         def __init__(self, title, text, onResponseRecorded=None, onResponseRecordedData=()):
-            okbtn = GUI.Button((0,0), "OK", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
-                               width=50, onClick=self.recordResponse, onClickData=("OK",))
+            okbtn = GUI.Button((0,0), "OK", state.getColorPalette().getColor("background"), state.getColorPalette().getColor("item"), 18,
+                               width=state.getGUI().width/2, height=40, onClick=self.recordResponse, onClickData=("OK",))
             cancbtn = GUI.Button((0,0), "Cancel", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
-                               width=50, onClick=self.recordResponse, onClickData=("Cancel",))
+                               width=state.getGUI().width/2, height=40, onClick=self.recordResponse, onClickData=("Cancel",))
             super(GUI.OKCancelDialog, self).__init__(title, text, [okbtn, cancbtn], onResponseRecorded)
             self.onResponseRecordedData = onResponseRecordedData
             
@@ -1641,15 +1692,15 @@ class GUI(object):
             
     class AskDialog(Dialog):
         def __init__(self, title, text, onResposeRecorded=None, onResponseRecordedData=()):
-            okbtn = GUI.Button((0,0), "OK", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
-                               width=50, onClick=self.returnRecordedResponse)
+            okbtn = GUI.Button((0,0), "OK", state.getColorPalette().getColor("background"), state.getColorPalette().getColor("item"), 18,
+                               width=state.getGUI().width/2, height=40, onClick=self.returnRecordedResponse)
             cancelbtn = GUI.Button((0,0), "Cancel", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
-                               width=50, onClick=self.recordResponse, onClickData=("Cancel",))
+                               width=state.getGUI().width/2, height=40, onClick=self.recordResponse, onClickData=("Cancel",))
             super(GUI.AskDialog, self).__init__(title, text, [okbtn, cancelbtn], onResposeRecorded)
             self.onResponseRecordedData = onResponseRecordedData
             self.textComponent.height -= 20
             self.textComponent.refresh()
-            self.textEntryField = GUI.TextEntryField((0, 90), width=self.container.width, height=20)
+            self.textEntryField = GUI.TextEntryField((0, 80), width=self.container.width, height=20)
             self.container.addChild(self.textEntryField)
             
         def returnRecordedResponse(self):
@@ -1669,7 +1720,7 @@ class GUI(object):
             self.baseContainer = GUI.Container((0, 0), width=state.getGUI().width, height=state.getActiveApplication().ui.height, color=(0, 0, 0, 0.5))
             self.container = customComponent
             self.buttonList = actionButtons
-            self.buttonRow = GUI.ButtonRow((2, self.container.height-30), width=state.getGUI().width, height=30, color=(0, 0, 0, 0))
+            self.buttonRow = GUI.ButtonRow((0, self.container.height-40), width=state.getGUI().width, height=40, color=(0, 0, 0, 0), padding=0, margin=0)
             for button in self.buttonList:
                 self.buttonRow.addChild(button)
             self.container.addChild(self.buttonRow)
@@ -1979,6 +2030,7 @@ class Application(object):
         if "onCustom" in self.parameters: self.evtHandlers["onCustom"] = getattr(self.module, self.parameters["onCustom"])
         self.thread = Thread(self.mainMethod, **self.evtHandlers)
         self.ui = GUI.AppContainer(self)
+        self.dataStore = DataStore(self)
         infofile.close()
         self.thread = Thread(self.mainMethod, **self.evtHandlers)
         
@@ -2165,6 +2217,39 @@ class NotificationQueue(object):
         
     def clear(self):
         self.notifications = []
+        
+class DataStore(object):
+    def __init__(self, app):
+        self.application = app
+        self.dsPath = os.path.join("res/", app.name+".ds")
+        
+    def getStore(self):
+        if not os.path.exists(self.dsPath):
+            wf = open(self.dsPath, "w")
+            json.dump({"dsApp": self.application.name}, wf)
+            wf.close()
+        rf = open(self.dsPath, "rU")
+        self.data = json.loads(str(unicode(rf.read(), errors="ignore")))
+        rf.close()
+        return self.data
+    
+    def saveStore(self):
+        wf = open(self.dsPath, "w")
+        json.dump(self.data, wf)
+        wf.close()
+    
+    def get(self, key, default=None):
+        return self.getStore().get(key, default)
+    
+    def set(self, key, value):
+        self.data[key] = value
+        self.saveStore()
+        
+    def __getitem__(self, itm):
+        return self.get(itm)
+    
+    def __setitem__(self, key, val):
+        self.set(key, val)
                 
 class State(object):                  
     def __init__(self, activeApp=None, colors=None, icons=None, controller=None, eventQueue=None, notificationQueue=None, functionbar=None, font=None, tFont=None, gui=None, appList=None, keyboard=None):

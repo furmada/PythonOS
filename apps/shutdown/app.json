@@ -1,0 +1,15 @@
+{
+  "name": "shutdown",
+  "title": "Shut Down",
+  "version": 1.0,
+  "author": "Adam Furman",
+  "module": "shutdown",
+  "main": "run",
+  "more": {
+    "icon": "apps/shutdown/shutdown.png",
+    "onStart": "sdAsk",
+    "onResume": "sdAsk",
+    "colorScheme": "light"
+  },
+  "description": "Shut Down your Python OS device. Works on linux."
+}

@@ -1,0 +1,14 @@
+{
+  "name": "todo",
+  "title": "ToDo",
+  "version": 1.0,
+  "author": "Adam Furman",
+  "module": "todo",
+  "main": "run",
+  "more": {
+    "icon": "apps/todo/icon.png",
+    "onStart": "onStart",
+    "colorScheme": "light"
+  },
+  "description": "Make a to-do list and check items off."
+}
