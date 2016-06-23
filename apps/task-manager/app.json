@@ -5,7 +5,8 @@
   "author": "Adam Furman",
   "module": "task-manager",
   "more": {
-    "icon": null,
+    "icon": "task-manager.png",
+    "hide": true,
     "onStart": "onLoad",
     "onResume": "loadList",
     "colorScheme": "normal"

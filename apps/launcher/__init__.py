@@ -10,9 +10,34 @@ def alphabetize(apps):
 def getVisibleAppList():
     visible = []
     for app in state.getApplicationList().getApplicationList():
-        if app.getIcon() != False:
+        if app.getIcon() != False and not app.parameters.get("hide", False):
             visible.append(app)
     return visible
+
+def displayInfoDialog(app):
+    cont = pyos.GUI.Container((20, 40), width=application.ui.width-40, height=application.ui.height-80, backgroundColor=state.getColorPalette().getColor("background"),
+                              border=3, borderColor=state.getColorPalette().getColor("accent"))
+    img = pyos.GUI.Image((3, 3), surface=app.getIcon())
+    title = pyos.GUI.Text((46, 13), app.title, state.getColorPalette().getColor("item"), 20)
+    pkt = pyos.GUI.Text((3, 46), "Package: "+app.name, state.getColorPalette().getColor("item"), 14)
+    vert = pyos.GUI.Text((3, 64), "Version: "+str(app.version), state.getColorPalette().getColor("item"), 14)
+    aut = pyos.GUI.Text((3, 82), "Author: "+app.author, state.getColorPalette().getColor("item"), 14)
+    desct = pyos.GUI.MultiLineText((3, 100), app.description, state.getColorPalette().getColor("item"), 14, width=cont.width-6, height=cont.height-146)
+    cont.addChild(img)
+    cont.addChild(title)
+    cont.addChild(pkt)
+    cont.addChild(vert)
+    cont.addChild(aut)
+    cont.addChild(desct)
+    dialog = pyos.GUI.CustomContentDialog("App Info", cont, ["Uninstall", "Open", "Close"], parseDialogAction, 0, 1,
+                                          onResponseRecordedData=(app,))
+    dialog.display()
+    
+def parseDialogAction(app, selected):
+    if selected == "Open":
+        app.activate()
+    if selected == "Uninstall":
+        uninstallAsk(app)
 
 def uninstallAsk(app):
     if app in state.getApplicationList().activeApplications:
@@ -38,10 +63,10 @@ def loadApps(pstate, app):
         appPane = None
         if app in state.getApplicationList().activeApplications:
             appPane = pyos.GUI.Container((0, 0), color=state.getColorPalette().getColor("accent")+(100,), width=pagedContainer.perColumn, height=pagedContainer.perRow,
-                                         onClick=app.activate, onLongClick=uninstallAsk, onLongClickData=(app,))
+                                         onClick=app.activate, onLongClick=displayInfoDialog, onLongClickData=(app,))
         else:
             appPane = pyos.GUI.Container((0, 0), transparent=True, width=pagedContainer.perColumn, height=pagedContainer.perRow,
-                                         onClick=app.activate, onLongClick=uninstallAsk, onLongClickData=(app,))
+                                         onClick=app.activate, onLongClick=displayInfoDialog, onLongClickData=(app,))
         appPane.SKIP_CHILD_CHECK = True
         appIcon = pyos.GUI.Image((0, 0), surface=app.getIcon(), onClick=app.activate) #Long click uninstall
         appName = pyos.GUI.Text((0, appIcon.height), app.title, state.getColorPalette().getColor("item"), 12,

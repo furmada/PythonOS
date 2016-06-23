@@ -1,7 +1,7 @@
 {
   "name": "gallery",
   "title": "Gallery",
-  "version": 1.0,
+  "version": 1.2,
   "author": "Adam Furman",
   "module": "gallery",
   "main": "run",

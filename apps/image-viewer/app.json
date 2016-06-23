@@ -6,7 +6,8 @@
   "module": "image-viewer",
   "main": "run",
   "more": {
-    "icon": null,
+    "icon": "image-viewer.png",
+    "hide": true,
     "onStart": "onStart",
     "colorScheme": "dark",
     "file": [ ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".pcx", ".tga", ".tif" ]

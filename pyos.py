@@ -19,9 +19,7 @@ from traceback import format_exc
 #state = None
 screen = None
 
-def getDictValue(d, k, default=None):
-    try: return d[k]
-    except KeyError: return default
+DEFAULT = 0xada
     
 def readFile(path):
     f = open(path, "rU")
@@ -38,19 +36,19 @@ class Thread(object):
         self.stop = False
         self.firstRun = True
         self.method = method
-        self.pause = getDictValue(data, "startPaused", False)
-        self.eventBindings["onStart"] = getDictValue(data, "onStart", None)
-        self.eventBindings["onStop"] = getDictValue(data, "onStop", None)
-        self.eventBindings["onPause"] = getDictValue(data, "onPause", None)
-        self.eventBindings["onResume"] = getDictValue(data, "onResume", None)
-        self.eventBindings["onCustom"] = getDictValue(data, "onCustom", None)
+        self.pause = data.get("startPaused", False)
+        self.eventBindings["onStart"] = data.get("onStart", None)
+        self.eventBindings["onStop"] = data.get("onStop", None)
+        self.eventBindings["onPause"] = data.get("onPause", None)
+        self.eventBindings["onResume"] = data.get("onResume", None)
+        self.eventBindings["onCustom"] = data.get("onCustom", None)
         
     @staticmethod
     def __defaultEvtMethod(self, *args):
         return
         
     def execEvent(self, evtKey, *params):
-        toExec = getDictValue(self.eventBindings, evtKey, Thread.__defaultEvtMethod)
+        toExec = self.eventBindings.get(evtKey, Thread.__defaultEvtMethod)
         if toExec == None: return
         if type(toExec) == list:
             toExec[0](*toExec[1])
@@ -289,7 +287,7 @@ class GUI(object):
         def getRootPath(self):
             return self.rootPath
         
-        def getLoadedIcon(self, icon):
+        def getLoadedIcon(self, icon, folder=""):
             try:
                 return pygame.image.load(os.path.join(self.rootPath, self.icons[icon]))
             except:
@@ -297,6 +295,8 @@ class GUI(object):
                     return pygame.transform.scale(pygame.image.load(icon), (40, 40))
                 if os.path.exists(os.path.join("res/icons/", icon)):
                     return pygame.transform.scale(pygame.image.load(os.path.join("res/icons/", icon)), (40, 40))
+                if os.path.exists(os.path.join(folder, icon)):
+                    return pygame.transform.scale(pygame.image.load(os.path.join(folder, icon)), (40, 40))
                 return pygame.image.load(os.path.join(self.rootPath, self.icons["unknown"]))
         
         @staticmethod
@@ -343,7 +343,24 @@ class GUI(object):
             return self.scheme
         
         def getColor(self, item):
-            return self.palette[self.scheme][item]
+            if item.find(":") == -1:
+                return self.palette[self.scheme][item]
+            else:
+                split = item.split(":")
+                cadd = lambda c, d: (c[0]+d[0], c[1]+d[1], c[2]+d[2])
+                if split[0] == "darker":
+                    return max(cadd(self.getColor(split[1]), (-20, -20, -20)), (0, 0, 0))
+                if split[0] == "dark":
+                    return max(cadd(self.getColor(split[1]), (-40, -40, -40)), (0, 0, 0))
+                if split[0] == "lighter":
+                    return min(cadd(self.getColor(split[1]), (20, 20, 20)), (250, 250, 250))
+                if split[0] == "light":
+                    return min(cadd(self.getColor(split[1]), (40, 40, 40)), (250, 250, 250))
+                if split[0] == "transparent":
+                    return self.getColor(split[1]) + (int(split[2].rstrip("%"))/100,)
+        
+        def __getitem__(self, item):
+            return self.getColor(item)
         
         def setScheme(self, scheme="normal"):
             self.scheme = scheme
@@ -472,18 +489,18 @@ class GUI(object):
                     self.width = self.surface.get_width()
                     self.height = self.surface.get_height()
             else:
-                self.width = data["width"]
-                self.height = data["height"]
+                self.width = data.get("width", 0)
+                self.height = data.get("height", 0)
                 self.surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-            if "onClick" in data: self.eventBindings["onClick"] = data["onClick"]
-            if "onLongClick" in data: self.eventBindings["onLongClick"] = data["onLongClick"]
-            if "onIntermediateUpdate" in data: self.eventBindings["onIntermediateUpdate"] = data["onIntermediateUpdate"]
-            if "onClickData" in data: self.eventData["onClick"] = data["onClickData"]
-            if "onIntermediateUpdateData" in data: self.eventData["onIntermediateUpdate"] = data["onIntermediateUpdateData"]
-            if "onLongClickData" in data: self.eventData["onLongClick"] = data["onLongClickData"]
+            self.eventBindings["onClick"] = data.get("onClick", None)
+            self.eventBindings["onLongClick"] = data.get("onLongClick", None)
+            self.eventBindings["onIntermediateUpdate"] = data.get("onIntermediateUpdate", None)
+            self.eventData["onClick"] = data.get("onClickData", None)
+            self.eventData["onIntermediateUpdate"] = data.get("onIntermediateUpdateData", None)
+            self.eventData["onLongClick"] = data.get("onLongClickData", None)
             if "border" in data: 
                 self.border = int(data["border"])
-                if "borderColor" in data: self.borderColor = data["borderColor"]
+                self.borderColor = data.get("borderColor", state.getColorPalette().getColor("item"))
             self.innerClickCoordinates = (-1, -1)
             self.innerOffset = [0, 0]
             self.internalClickOverrides = {}
@@ -491,8 +508,8 @@ class GUI(object):
         def onClick(self):
             if "onClick" in self.internalClickOverrides:
                 self.internalClickOverrides["onClick"][0](*self.internalClickOverrides["onClick"][1])
-            if "onClick" in self.eventBindings: 
-                if "onClick" in self.eventData:
+            if self.eventBindings["onClick"]: 
+                if self.eventData["onClick"]:
                     self.eventBindings["onClick"](*self.eventData["onClick"])
                 else:
                     self.eventBindings["onClick"]()
@@ -500,8 +517,8 @@ class GUI(object):
         def onLongClick(self):
             if "onLongClick" in self.internalClickOverrides:
                 self.internalClickOverrides["onLongClick"][0](*self.internalClickOverrides["onLongClick"][1])
-            if "onLongClick" in self.eventBindings:
-                if "onLongClick" in self.eventData:
+            if self.eventBindings["onLongClick"]:
+                if self.eventData["onLongClick"]:
                     self.eventBindings["onLongClick"](*self.eventData["onLongClick"])
                 else:
                     self.eventBindings["onLongClick"]()
@@ -509,8 +526,8 @@ class GUI(object):
         def onIntermediateUpdate(self):
             if "onIntermediateUpdate" in self.internalClickOverrides:
                 self.internalClickOverrides["onIntermediateUpdate"][0](*self.internalClickOverrides["onIntermediateUpdate"][1])
-            if "onIntermediateUpdate" in self.eventBindings: 
-                    if "onIntermediateUpdate" in self.eventData:
+            if self.eventBindings["onIntermediateUpdate"]: 
+                    if self.eventData["onIntermediateUpdate"]:
                         self.eventBindings["onIntermediateUpdate"](*self.eventData["onIntermediateUpdate"])
                     else:
                         self.eventBindings["onIntermediateUpdate"]()
@@ -552,6 +569,16 @@ class GUI(object):
         
         def setPosition(self, pos):
             self.position = list(pos)[:]
+            
+        @staticmethod
+        def default(*items):
+            if len(items)%2 != 0: return items
+            values = []
+            p = 0
+            while p < len(items):
+                values.append(items[p+1] if items[p] == DEFAULT else items[p])
+                p += 2
+            return tuple(values)
         
     class Container(Component):        
         def __init__(self, position, **data):
@@ -560,13 +587,16 @@ class GUI(object):
             self.backgroundColor = (0, 0, 0)
             self.childComponents = []
             self.SKIP_CHILD_CHECK = False
-            if "transparent" in data: self.transparent = data["transparent"]
-            if "color" in data: self.backgroundColor = data["color"]
-            else: self.backgroundColor = state.getColorPalette().getColor("background")
-            if "children" in data: self.childComponents = data["children"] #WARNING: Will fail if "children" is not only Components.
+            self.transparent = data.get("transparent", False)
+            self.backgroundColor = data.get("color", state.getColorPalette().getColor("background"))
+            if "children" in data: self.childComponents = data["children"]
             
         def addChild(self, component):
             self.childComponents.append(component)
+            
+        def addChildren(self, *children):
+            for child in children:
+                self.addChild(child)
             
         def removeChild(self, component):
             self.childComponents.remove(component)
@@ -648,7 +678,9 @@ class GUI(object):
             screen.blit(self.surface, self.position)
             
     class Text(Component):        
-        def __init__(self, position, text, color=(0,0,0), size=14, **data):
+        def __init__(self, position, text, color=DEFAULT, size=DEFAULT, **data):
+            #Defaults are "item" and 14.
+            color, size = GUI.Component.default(color, state.getColorPalette().getColor("item"), size, 14)
             self.text = text
             self.size = size
             self.color = color
@@ -669,9 +701,12 @@ class GUI(object):
             self.text = str(text)
             self.refresh()
             
+        def getScaledSize(self, new_dimensions):
+            return new_dimensions[1] * (self.size / self.height)
+            
     class MultiLineText(Text):
         @staticmethod
-        def render_textrect(string, font, rect, text_color, background_color, justification=0):
+        def render_textrect(string, font, rect, text_color, background_color, justification):
             final_lines = []
             requested_lines = string.splitlines()
             err = None
@@ -713,7 +748,10 @@ class GUI(object):
                 accumulated_height += font.size(line)[1]
             return (surface, err, final_lines)
         
-        def __init__(self, position, text, color=(0,0,0), size=14, justification=0, **data):
+        def __init__(self, position, text, color=DEFAULT, size=DEFAULT, justification=DEFAULT, **data):
+            #Defaults are "item", and 0 (left).
+            color, justification = GUI.Component.default(color, state.getColorPalette().getColor("item"),
+                                                         justification, 0)
             self.justification = justification
             self.color = color
             self.size = size
@@ -730,7 +768,12 @@ class GUI(object):
             self.surface = self.getRenderedText()
             
     class ExpandingMultiLineText(MultiLineText):
-        def __init__(self, position, text, color=(0,0,0), size=14, justification=0, lineHeight=16, **data):
+        def __init__(self, position, text, color=DEFAULT, size=DEFAULT, justification=DEFAULT, lineHeight=DEFAULT, **data):
+            #Defaults are "item", 14, 0, and 16.
+            color, size, justification, lineHeight = GUI.Component.default(color, state.getColorPalette().getColor("item"),
+                                                                           size, 14,
+                                                                           justification, 0,
+                                                                           lineHeight, 16)
             self.lineHeight = lineHeight
             self.linkedScroller = data.get("scroller", None)
             self.textLines = []
@@ -824,10 +867,13 @@ class GUI(object):
             return self.percent
             
     class Button(Container):
-        def __init__(self, position, text, bgColor=(20,20,20), textColor=(200,200,200), textSize=14, **data):
+        def __init__(self, position, text, bgColor=DEFAULT, textColor=DEFAULT, textSize=DEFAULT, **data):
+            #Defaults are "darker:background", "item", and 14.
+            bgColor, textColor, textSize = GUI.Component.default(bgColor, state.getColorPalette().getColor("darker:background"),
+                                  textColor, state.getColorPalette().getColor("item"),
+                                  textSize, 14)
             self.textComponent = GUI.Text((0, 0), text, textColor, textSize, font=data.get("font", state.getFont()))
-            self.paddingAmount = 5
-            if "padding" in data: self.paddingAmount = data["padding"]
+            self.paddingAmount = data.get("padding", 5)
             if "width" not in data: data["width"] = self.textComponent.width + (2 * self.paddingAmount)
             if "height" not in data: data["height"] = self.textComponent.height + (2 * self.paddingAmount)
             super(GUI.Button, self).__init__(position, **data)
@@ -1148,10 +1194,8 @@ class GUI(object):
             
     class ListPagedContainer(PagedContainer):
         def __init__(self, position, **data):
-            self.padding = 1
-            self.margin = 2
-            if "padding" in data: self.padding = data["padding"]
-            if "margin" in data: self.margin = data["margin"]
+            self.padding = data.get("padding", 0)
+            self.margin = data.get("margin", 0)
             super(GUI.ListPagedContainer, self).__init__(position, **data)
             
         def getHeightOfComponents(self):
@@ -1178,10 +1222,8 @@ class GUI(object):
             
     class ButtonRow(Container):
         def __init__(self, position, **data):
-            self.padding = 2
-            if "padding" in data: self.padding = data["padding"]
-            self.margin = 2
-            if "margin" in data: self.margin = data["margin"]
+            self.padding = data.get("padding", 0)
+            self.margin = data.get("margin", 0)
             super(GUI.ButtonRow, self).__init__(position, **data)
             
         def getLastComponent(self):
@@ -1207,10 +1249,10 @@ class GUI(object):
                 
     class ScrollIndicator(Component):
         def __init__(self, scrollCont, position, color, **data):
-            data["onIntermediateUpdate"] = self.dragScroll
-            data["onClick"] = self.clearScrollParams
-            data["onLongClick"] = self.clearScrollParams
             super(GUI.ScrollIndicator, self).__init__(position, **data)
+            self.internalClickOverrides["onIntermediateUpdate"] = (self.dragScroll, ())
+            self.internalClickOverrides["onClick"] = (self.clearScrollParams, ())
+            self.internalClickOverrides["onLongClick"] = (self.clearScrollParams, ())
             self.scrollContainer = scrollCont
             self.color = color
             self.lastClickCoord = None
@@ -1369,8 +1411,9 @@ class GUI(object):
                 self.addChild(child)
                 
     class TextScrollableContainer(ScrollableContainer):
-        def __init__(self, position, textComponent=None, **data):
-            data["scrollAmount"] = data.get("lineHeight", textComponent.lineHeight if textComponent != None else 16)
+        def __init__(self, position, textComponent=DEFAULT, **data):
+            #Defaults to creating a text component.
+            data["scrollAmount"] = data.get("lineHeight", textComponent.lineHeight if textComponent != DEFAULT else 16)
             super(GUI.TextScrollableContainer, self).__init__(position, **data)
             self.textComponent = textComponent
             if self.textComponent == None:
@@ -1604,130 +1647,7 @@ class GUI(object):
         def render(self, largerSurface):
             self.baseContainer.render(largerSurface)
             
-    class Dialog(object):
-        def __init__(self, title, text, actionButtons, onResponseRecorded=None):
-            self.application = state.getActiveApplication()
-            self.title = title
-            self.text = text
-            self.response = None
-            self.baseContainer = GUI.Container((0, 0), width=state.getGUI().width, height=state.getActiveApplication().ui.height, color=(0, 0, 0, 0))
-            self.container = GUI.Container((0, 50), width=state.getGUI().width, height=130, color=state.getColorPalette().getColor("background"), border=2, borderColor=state.getColorPalette().getColor("accent"))
-            self.buttonList = actionButtons
-            self.textComponent = GUI.MultiLineText((2, 2), self.text, state.getColorPalette().getColor("item"), 16, width=self.container.width-4, height=96)
-            self.buttonRow = GUI.ButtonRow((0, 96), width=state.getGUI().width, height=40, color=(0, 0, 0, 0), padding=0, margin=0)
-            for button in self.buttonList:
-                self.buttonRow.addChild(button)
-            self.container.addChild(self.textComponent)
-            self.container.addChild(self.buttonRow)
-            self.baseContainer.addChild(self.container)
-            self.onResponseRecorded = onResponseRecorded
-    
-        def display(self):
-            state.getFunctionBar().app_title_text.setText(self.title)
-            self.application.ui.setDialog(self)
-        
-        def hide(self):
-            state.getFunctionBar().app_title_text.setText(state.getActiveApplication().title)
-            self.application.ui.clearDialog()
-            self.application.ui.refresh()
-            
-        def recordResponse(self, response):
-            self.response = response
-            self.hide()
-            if self.onResponseRecorded != None:
-                self.onResponseRecorded(self.response)
-            
-        def getResponse(self):
-            return self.response
-            
-    class OKDialog(Dialog):
-        def __init__(self, title, text, onResposeRecorded=None):
-            okbtn = GUI.Button((0,0), "OK", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
-                               width=state.getGUI().width, height=40, onClick=self.recordResponse, onClickData=("OK",))
-            super(GUI.OKDialog, self).__init__(title, text, [okbtn], onResposeRecorded)
-            
-    class ErrorDialog(Dialog):
-        def __init__(self, text, onResposeRecorded=None):
-            okbtn = GUI.Button((0,0), "Acknowledged", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
-                               width=state.getGUI().width, height=40, onClick=self.recordResponse, onClickData=("Acknowledged",))
-            super(GUI.ErrorDialog, self).__init__("Error", text, [okbtn], onResposeRecorded)
-            self.container.backgroundColor = state.getColorPalette().getColor("error")
-            
-    class WarningDialog(Dialog):
-        def __init__(self, text, onResposeRecorded=None):
-            okbtn = GUI.Button((0,0), "OK", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
-                               width=state.getGUI().width, height=40, onClick=self.recordResponse, onClickData=("OK",))
-            super(GUI.WarningDialog, self).__init__("Warning", text, [okbtn], onResposeRecorded)
-            self.container.backgroundColor = state.getColorPalette().getColor("warning")
-            
-    class YNDialog(Dialog):
-        def __init__(self, title, text, onResponseRecorded=None, onResponseRecordedData=()):
-            ybtn = GUI.Button((0,0), "Yes", (200, 250, 200), (50, 50, 50), 18,
-                               width=(state.getGUI().width/2), height=40, onClick=self.recordResponse, onClickData=("Yes",))
-            nbtn = GUI.Button((0,0), "No", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
-                               width=(state.getGUI().width/2), height=40, onClick=self.recordResponse, onClickData=("No",))
-            super(GUI.YNDialog, self).__init__(title, text, [ybtn, nbtn], onResponseRecorded)
-            self.onResponseRecordedData = onResponseRecordedData
-            
-        def recordResponse(self, response):
-            self.response = response
-            self.hide()
-            if self.onResponseRecorded != None:
-                self.onResponseRecorded(*((self.onResponseRecordedData)+(self.response,)))
-            
-    class OKCancelDialog(Dialog):
-        def __init__(self, title, text, onResponseRecorded=None, onResponseRecordedData=()):
-            okbtn = GUI.Button((0,0), "OK", state.getColorPalette().getColor("background"), state.getColorPalette().getColor("item"), 18,
-                               width=state.getGUI().width/2, height=40, onClick=self.recordResponse, onClickData=("OK",))
-            cancbtn = GUI.Button((0,0), "Cancel", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
-                               width=state.getGUI().width/2, height=40, onClick=self.recordResponse, onClickData=("Cancel",))
-            super(GUI.OKCancelDialog, self).__init__(title, text, [okbtn, cancbtn], onResponseRecorded)
-            self.onResponseRecordedData = onResponseRecordedData
-            
-        def recordResponse(self, response):
-            self.response = response
-            self.hide()
-            if self.onResponseRecorded != None:
-                self.onResponseRecorded(*((self.onResponseRecordedData)+(self.response,)))
-            
-    class AskDialog(Dialog):
-        def __init__(self, title, text, onResposeRecorded=None, onResponseRecordedData=()):
-            okbtn = GUI.Button((0,0), "OK", state.getColorPalette().getColor("background"), state.getColorPalette().getColor("item"), 18,
-                               width=state.getGUI().width/2, height=40, onClick=self.returnRecordedResponse)
-            cancelbtn = GUI.Button((0,0), "Cancel", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
-                               width=state.getGUI().width/2, height=40, onClick=self.recordResponse, onClickData=("Cancel",))
-            super(GUI.AskDialog, self).__init__(title, text, [okbtn, cancelbtn], onResposeRecorded)
-            self.onResponseRecordedData = onResponseRecordedData
-            self.textComponent.height -= 20
-            self.textComponent.refresh()
-            self.textEntryField = GUI.TextEntryField((0, 80), width=self.container.width, height=20)
-            self.container.addChild(self.textEntryField)
-            
-        def returnRecordedResponse(self):
-            self.recordResponse(self.textEntryField.getText())
-            
-        def recordResponse(self, response):
-            self.response = response
-            self.hide()
-            if self.onResponseRecorded != None:
-                self.onResponseRecorded(*((self.onResponseRecordedData)+(self.response,)))
-            
-    class CustomContentDialog(Dialog):
-        def __init__(self, title, customComponent, actionButtons, onResponseRecorded=None):
-            self.application = state.getActiveApplication()
-            self.title = title
-            self.response = None
-            self.baseContainer = GUI.Container((0, 0), width=state.getGUI().width, height=state.getActiveApplication().ui.height, color=(0, 0, 0, 0.5))
-            self.container = customComponent
-            self.buttonList = actionButtons
-            self.buttonRow = GUI.ButtonRow((0, self.container.height-40), width=state.getGUI().width, height=40, color=(0, 0, 0, 0), padding=0, margin=0)
-            for button in self.buttonList:
-                self.buttonRow.addChild(button)
-            self.container.addChild(self.buttonRow)
-            self.baseContainer.addChild(self.container)
-            self.onResponseRecorded = onResponseRecorded
-            
-    class Overlay(object): #Is dialog-like
+    class Overlay(object):
         def __init__(self, position, **data):
             self.position = list(position)
             self.displayed = False
@@ -1752,11 +1672,130 @@ class GUI(object):
         def addChild(self, child):
             self.container.addChild(child)
             
+    class Dialog(Overlay):
+        def __init__(self, title, text, actionButtons, onResponseRecorded=None, onResponseRecordedData=(), **data):
+            super(GUI.Dialog, self).__init__((0, (state.getActiveApplication().ui.height/2)-65), height=data.get("height", 130),
+                                             width=data.get("width", state.getGUI().width), 
+                                             color=data.get("color", state.getColorPalette().getColor("background")))
+            self.container.border = 3
+            self.container.borderColor = state.getColorPalette().getColor("item")
+            self.container.refresh()
+            self.application = state.getActiveApplication()
+            self.title = title
+            self.text = text
+            self.response = None
+            self.buttonList = GUI.Dialog.getButtonList(actionButtons, self) if type(actionButtons[0]) == str else actionButtons
+            self.textComponent = GUI.MultiLineText((2, 2), self.text, state.getColorPalette().getColor("item"), 16, width=self.container.width-4, height=96)
+            self.buttonRow = GUI.ButtonRow((0, 96), width=state.getGUI().width, height=40, color=(0, 0, 0, 0), padding=0, margin=0)
+            for button in self.buttonList:
+                self.buttonRow.addChild(button)
+            self.addChild(self.textComponent)
+            self.addChild(self.buttonRow)
+            self.onResponseRecorded = onResponseRecorded
+            self.onResponseRecordedData = onResponseRecordedData
+    
+        def display(self):
+            state.getFunctionBar().app_title_text.setText(self.title)
+            self.application.ui.setDialog(self)
+        
+        def hide(self):
+            state.getFunctionBar().app_title_text.setText(state.getActiveApplication().title)
+            self.application.ui.clearDialog()
+            self.application.ui.refresh()
+            
+        def recordResponse(self, response):
+            self.response = response
+            self.hide()
+            if self.onResponseRecorded != None:
+                if self.onResponseRecordedData != None:
+                    self.onResponseRecorded(*((self.onResponseRecordedData)+(self.response,)))
+            
+        def getResponse(self):
+            return self.response
+        
+        @staticmethod
+        def getButtonList(titles, dialog):
+            blist = []
+            for title in titles:
+                blist.append(GUI.Button((0, 0), title, state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
+                                        width=dialog.container.width/len(titles), height=40,
+                                        onClick=dialog.recordResponse, onClickData=(title,)))
+            return blist
+            
+    class OKDialog(Dialog):
+        def __init__(self, title, text, onResposeRecorded=None, onResponseRecordedData=()):
+            okbtn = GUI.Button((0,0), "OK", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
+                               width=state.getGUI().width, height=40, onClick=self.recordResponse, onClickData=("OK",))
+            super(GUI.OKDialog, self).__init__(title, text, [okbtn], onResposeRecorded)
+            
+    class ErrorDialog(Dialog):
+        def __init__(self, text, onResposeRecorded=None, onResponseRecordedData=()):
+            okbtn = GUI.Button((0,0), "Acknowledged", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
+                               width=state.getGUI().width, height=40, onClick=self.recordResponse, onClickData=("Acknowledged",))
+            super(GUI.ErrorDialog, self).__init__("Error", text, [okbtn], onResposeRecorded)
+            self.container.backgroundColor = state.getColorPalette().getColor("error")
+            
+    class WarningDialog(Dialog):
+        def __init__(self, text, onResposeRecorded=None, onResponseRecordedData=()):
+            okbtn = GUI.Button((0,0), "OK", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
+                               width=state.getGUI().width, height=40, onClick=self.recordResponse, onClickData=("OK",))
+            super(GUI.WarningDialog, self).__init__("Warning", text, [okbtn], onResposeRecorded)
+            self.container.backgroundColor = state.getColorPalette().getColor("warning")
+            
+    class YNDialog(Dialog):
+        def __init__(self, title, text, onResponseRecorded=None, onResponseRecordedData=()):
+            ybtn = GUI.Button((0,0), "Yes", (200, 250, 200), (50, 50, 50), 18,
+                               width=(state.getGUI().width/2), height=40, onClick=self.recordResponse, onClickData=("Yes",))
+            nbtn = GUI.Button((0,0), "No", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
+                               width=(state.getGUI().width/2), height=40, onClick=self.recordResponse, onClickData=("No",))
+            super(GUI.YNDialog, self).__init__(title, text, [ybtn, nbtn], onResponseRecorded)
+            self.onResponseRecordedData = onResponseRecordedData
+            
+    class OKCancelDialog(Dialog):
+        def __init__(self, title, text, onResponseRecorded=None, onResponseRecordedData=()):
+            okbtn = GUI.Button((0,0), "OK", state.getColorPalette().getColor("background"), state.getColorPalette().getColor("item"), 18,
+                               width=state.getGUI().width/2, height=40, onClick=self.recordResponse, onClickData=("OK",))
+            cancbtn = GUI.Button((0,0), "Cancel", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
+                               width=state.getGUI().width/2, height=40, onClick=self.recordResponse, onClickData=("Cancel",))
+            super(GUI.OKCancelDialog, self).__init__(title, text, [okbtn, cancbtn], onResponseRecorded, onResponseRecordedData)
+            
+    class AskDialog(Dialog):
+        def __init__(self, title, text, onResposeRecorded=None, onResponseRecordedData=()):
+            okbtn = GUI.Button((0,0), "OK", state.getColorPalette().getColor("background"), state.getColorPalette().getColor("item"), 18,
+                               width=state.getGUI().width/2, height=40, onClick=self.returnRecordedResponse)
+            cancelbtn = GUI.Button((0,0), "Cancel", state.getColorPalette().getColor("item"), state.getColorPalette().getColor("background"), 18,
+                               width=state.getGUI().width/2, height=40, onClick=self.recordResponse, onClickData=("Cancel",))
+            super(GUI.AskDialog, self).__init__(title, text, [okbtn, cancelbtn], onResposeRecorded, onResponseRecordedData)
+            self.textComponent.height -= 20
+            self.textComponent.refresh()
+            self.textEntryField = GUI.TextEntryField((0, 80), width=self.container.width, height=20)
+            self.container.addChild(self.textEntryField)
+            
+        def returnRecordedResponse(self):
+            self.recordResponse(self.textEntryField.getText())
+            
+    class CustomContentDialog(Dialog):
+        def __init__(self, title, customComponent, actionButtons, onResponseRecorded=None, btnPad=0, btnMargin=5, **data):
+            self.application = state.getActiveApplication()
+            self.title = title
+            self.response = None
+            self.baseContainer = GUI.Container((0, 0), width=state.getGUI().width, height=state.getActiveApplication().ui.height, color=(0, 0, 0, 0.5))
+            self.container = customComponent
+            self.buttonList = GUI.Dialog.getButtonList(actionButtons, self) if type(actionButtons[0]) == str else actionButtons
+            self.buttonRow = GUI.ButtonRow((0, self.container.height-33), width=self.container.width, height=40, color=(0, 0, 0, 0), padding=btnPad, margin=btnMargin)
+            for button in self.buttonList:
+                self.buttonRow.addChild(button)
+            self.container.addChild(self.buttonRow)
+            self.baseContainer.addChild(self.container)
+            self.onResponseRecorded = onResponseRecorded
+            self.data = data
+            self.onResponseRecordedData = data.get("onResponseRecordedData", ())
+            
     class NotificationMenu(Overlay):        
         def __init__(self):
             super(GUI.NotificationMenu, self).__init__((40, 20), width=200, height=260, color=(20, 20, 20, 200))
             self.text = GUI.Text((1, 1), "Notifications", (200, 200, 200), 18)
-            self.clearAllBtn = GUI.Button((self.width-41, 1), "Clear", (200, 200, 200), (20, 20, 20), width=40, height=18, onClick=self.clearAll)
+            self.clearAllBtn = GUI.Button((self.width-50, 0), "Clear", (200, 200, 200), (20, 20, 20), width=50, height=20, onClick=self.clearAll)
             self.nContainer = GUI.ListScrollableContainer((0, 20), width=200, height=240, transparent=True, margin=5)
             self.addChild(self.text)
             self.addChild(self.clearAllBtn)
@@ -1863,14 +1902,15 @@ class GUI(object):
         def showOverlay(self):
             self.overlay.display()
             
-        def generateItemSequence(self, items, size=16, color=(0,0,0)):
+        def generateItemSequence(self, items, size=22, color=(0,0,0)):
             comps = []
             acc_height = 0
             for item in items:
-                el_c = GUI.Container((0, acc_height), transparent=True, width=self.overlay.width, height=30,
+                el_c = GUI.Container((0, acc_height), transparent=True, width=self.overlay.width, height=40,
                                      onClick=self.onSelect, onClickData=(item,), border=1, borderColor=(20,20,20))
-                elem = GUI.Text((2, 7), item, color, size,
+                elem = GUI.Text((2, 0), item, color, size,
                                 onClick=self.onSelect, onClickData=(item,))
+                elem.position[1] = GUI.getCenteredCoordinates(elem, el_c)[1]
                 el_c.addChild(elem)
                 el_c.SKIP_CHILD_CHECK = True
                 comps.append(el_c)
@@ -1999,12 +2039,12 @@ class Application(object):
     def __init__(self, location):
         self.parameters = {}
         self.location = location
-        infofile = open(os.path.join(location, "app.json"), "rU")
+        infofile = open(os.path.join(location, "app.json").replace("\\", "/"), "rU")
         app_data = json.loads(str(unicode(infofile.read(), errors="ignore")))
         self.name = str(app_data.get("name"))
-        self.title = str(app_data.get("title"))
-        self.version = float(app_data.get("version"))
-        self.author = str(app_data.get("author"))
+        self.title = str(app_data.get("title", self.name))
+        self.version = float(app_data.get("version", 0.0))
+        self.author = str(app_data.get("author", "No Author"))
         self.module = import_module("apps." + str(app_data.get("module")), "apps")
         self.module.state = state
         self.file = None
@@ -2014,6 +2054,10 @@ class Application(object):
             self.mainMethod = Application.dummy
         try: self.parameters = app_data.get("more")
         except: pass
+        try:
+            self.description = app_data.get("description")
+        except:
+            self.description = "No Description."
         #Immersion check
         if "immersive" in self.parameters:
             self.immersionUI = ImmersionUI(self)
@@ -2075,7 +2119,7 @@ class Application(object):
         if "icon" in self.parameters:
             if self.parameters["icon"] == None:
                 return False
-            return state.getIcons().getLoadedIcon(self.parameters["icon"])
+            return state.getIcons().getLoadedIcon(self.parameters["icon"], self.location)
         else:
             return state.getIcons().getLoadedIcon("unknown")
         
