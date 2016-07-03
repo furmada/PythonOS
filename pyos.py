@@ -278,7 +278,9 @@ class GUI(object):
                      "back": "back.png",
                      "forward": "forward.png",
                      "search": "search.png",
-                     "info": "info.png"
+                     "info": "info.png",
+                     "open": "open.png",
+                     "save": "save.png"
                      }
         
         def getIcons(self):
@@ -474,14 +476,26 @@ class GUI(object):
             self.surface = None
             self.border = 0
             self.borderColor = (0, 0, 0)
+            self.originalParamters = {
+                                      "position": position[:],
+                                      "width": data.get("width", data["surface"].get_width() if data.get("surface", False) else 0),
+                                      "height": data.get("height", data["surface"].get_height() if data.get("surface", False) else 0)
+                                      }
             if "surface" in data:
                 self.surface = data["surface"]
                 if "width" in data or "height" in data:
                     if "width" in data:
-                        self.width = data["width"]
-                        self.height = self.surface.get_height()
+                        if type(data["width"]) == str and data["width"].endswith("%"):
+                            self.width = int((state.getActiveApplication().ui.width/100)*int(data["width"].replace("%", "")))
+                        else:
+                            self.width = data["width"]
+                        if not "height" in data:
+                            self.height = self.surface.get_height()
                     if "height" in data:
-                        self.height = data["height"]
+                        if type(data["height"]) == str and data["height"].endswith("%"):
+                            self.height = int((state.getActiveApplication().ui.height/100)*int(data["height"].replace("%", "")))
+                        else:
+                            self.height = data["height"]
                         if self.width == -1:
                             self.width = self.surface.get_width()
                     self.surface = pygame.transform.scale(self.surface, (self.width, self.height))
@@ -489,9 +503,19 @@ class GUI(object):
                     self.width = self.surface.get_width()
                     self.height = self.surface.get_height()
             else:
-                self.width = data.get("width", 0)
-                self.height = data.get("height", 0)
+                if "width" in data and type(data["width"]) == str and data["width"].endswith("%"):
+                    self.width = int((state.getActiveApplication().ui.width/100.0)*int(data["width"].replace("%", "")))
+                else:
+                    self.width = data.get("width", 0)
+                if "height" in data and type(data["height"]) == str and data["height"].endswith("%"):
+                    self.height = int((state.getActiveApplication().ui.height/100.0)*int(data["height"].replace("%", "")))
+                else:
+                    self.height = data.get("height", 0)
                 self.surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+            if type(self.position[0]) == str and self.position[0].endswith("%"):
+                self.position[0] = int((state.getActiveApplication().ui.width/100.0)*int(self.position[0].replace("%", "")))
+            if type(self.position[1]) == str and self.position[1].endswith("%"):
+                self.position[1] = int((state.getActiveApplication().ui.height/100.0)*int(self.position[1].replace("%", "")))
             self.eventBindings["onClick"] = data.get("onClick", None)
             self.eventBindings["onLongClick"] = data.get("onLongClick", None)
             self.eventBindings["onIntermediateUpdate"] = data.get("onIntermediateUpdate", None)
@@ -923,6 +947,38 @@ class GUI(object):
                                                                          (self.width/2, self.height-self.checkWidth/2),
                                                                          (self.width, 0)], self.checkWidth)
             super(GUI.Checkbox, self).render(largerSurface)
+            
+    class Switch(Component):
+        def __init__(self, position, on=False, **data):
+            if "border" not in data:
+                data["border"] = 2
+                data["borderColor"] = state.getColorPalette().getColor("item")
+            super(GUI.Switch, self).__init__(position, **data)
+            self.backgroundColor = data.get("backgroundColor", state.getColorPalette().getColor("background"))
+            self.onColor = data.get("onColor", state.getColorPalette().getColor("accent"))
+            self.offColor = data.get("offColor", state.getColorPalette().getColor("dark:background"))
+            self.on = on
+            self.internalClickOverrides["onClick"] = [self.switch, ()]
+            
+        def getChecked(self):
+            return self.checked
+        
+        def switch(self, state="toggle"):
+            if state == "toggle":
+                self.on = not self.on
+            else:
+                self.on = bool(state)
+            
+        def render(self, largerSurface):
+            self.surface.fill(self.backgroundColor)
+            if self.on:
+                pygame.draw.rect(self.surface, self.onColor, [self.width/2, 0, self.width/2, self.height])
+            else:
+                pygame.draw.rect(self.surface, self.offColor, [0, 0, self.width/2, self.height])
+            pygame.draw.circle(self.surface, state.getColorPalette().getColor("item"), (self.width/4, self.height/2), self.height/4, 2)
+            pygame.draw.line(self.surface, state.getColorPalette().getColor("item"), (3*(self.width/4), self.height/4),
+                             (3*(self.width/4), 3*(self.height/4)), 2)
+            super(GUI.Switch, self).render(largerSurface)
         
     class Canvas(Component):
         def __init__(self, position, **data):
@@ -940,16 +996,34 @@ class GUI(object):
             self.primaryTextComponent.setPosition([GUI.getCenteredCoordinates(self.primaryTextComponent, self)[0]-6, self.height-self.primaryTextComponent.height-1])
             self.addChild(self.primaryTextComponent)
             self.addChild(self.secondaryTextComponent)
+            self.blinkTime = 0
+            self.internalClickOverrides["onClick"] = (self.registerBlink, ())
+            self.internalClickOverrides["onLongClick"] = (self.registerBlink, (True,))
+            
+        def registerBlink(self, lp=False):
+            self.blinkTime = state.getGUI().update_interval / 4
+            self.primaryTextComponent.color = state.getColorPalette().getColor("background")
+            self.secondaryTextComponent.color = state.getColorPalette().getColor("background")
+            self.backgroundColor = state.getColorPalette().getColor("accent" if lp else "item")
+            self.refresh()
             
         def getClickedChild(self, mouseEvent, offsetX=0, offsetY=0):
             if self.checkClick(mouseEvent, offsetX, offsetY):
                 return self
             return None
         
+        def render(self, largerSurface):
+            if self.blinkTime >= 0:
+                self.blinkTime -= 1
+                if self.blinkTime < 0:
+                    self.primaryTextComponent.color = state.getColorPalette().getColor("item")
+                    self.secondaryTextComponent.color = state.getColorPalette().getColor("item")
+                    self.backgroundColor = state.getColorPalette().getColor("background")
+                    self.refresh()
+            super(GUI.KeyboardButton, self).render(largerSurface)
+        
     class TextEntryField(Container):
         def __init__(self, position, initialText="", **data):
-            data["onIntermediateUpdate"] = self.dragScroll
-            data["onClick"] = self.activate
             if "border" not in data:
                 data["border"] = 1
                 data["borderColor"] = state.getColorPalette().getColor("accent")
@@ -959,7 +1033,7 @@ class GUI(object):
                 self.blinkInterval = data["blink"]
             else:
                 self.blinkInterval = 500
-            self.doBlink = False
+            self.doBlink = True
             self.blinkOn = False
             self.lastBlink = datetime.now()
             self.indicatorPosition = len(initialText)
@@ -972,6 +1046,8 @@ class GUI(object):
             self.textComponent.position[1] = GUI.getCenteredCoordinates(self.textComponent, self)[1]
             self.addChild(self.textComponent)
             self.MULTILINE = None
+            self.internalClickOverrides["onClick"] = (self.activate, ())
+            self.internalClickOverrides["onIntermediateUpdate"] = (self.dragScroll, ())
             
         def clearScrollParams(self):
             self.lastClickCoord = None
@@ -986,63 +1062,74 @@ class GUI(object):
                     self.textComponent.position[0] = 2
             self.lastClickCoord = self.innerClickCoordinates
             
+        def getPxPosition(self, fromPos=DEFAULT):
+            return state.getTypingFont().get(16).render(self.textComponent.text[:(self.indicatorPosition if fromPos==DEFAULT else fromPos)], 1, self.textComponent.color).get_width()
+            
         def activate(self):
             self.clearScrollParams()
+            self.updateOverflow()
             state.setKeyboard(GUI.Keyboard(self))
+            if self.MULTILINE != None:
+                for f in self.MULTILINE.textFields: f.doBlink = False
             self.doBlink = True
             mousePos = self.innerClickCoordinates[0] - self.innerOffset[0]
-            currFont = state.getTypingFont().get(16)
-            pos = 0
-            textWidth = 0
-            rendered = None
-            if self.textComponent.text != "":
-                perLetter = self.textComponent.width/len(self.textComponent.text)
-                while pos < len(self.textComponent.text):
-                    rendered = currFont.render(self.textComponent.text[:pos], 1, self.textComponent.color)
-                    textWidth = rendered.get_width()
-                    if mousePos >= textWidth-self.overflow-perLetter and mousePos <= textWidth-self.overflow:
+            if mousePos > self.textComponent.width:
+                self.indicatorPosition = len(self.textComponent.text)
+            else:
+                prevWidth = 0
+                for self.indicatorPosition in range(len(self.textComponent.text)):
+                    currWidth = self.getPxPosition(self.indicatorPosition)
+                    if mousePos >= prevWidth and mousePos <= currWidth:
+                        self.indicatorPosition -= 1
                         break
-                    pos += 1
-                if mousePos > textWidth:
-                    self.indicatorPosition = len(self.textComponent.text)
-                    self.doBlink = False
-                else:
-                    self.indicatorPxPosition = textWidth
-                    self.indicatorPosition = pos
-                    self.doBlink = True
+                    prevWidth = currWidth
             state.getKeyboard().active = True
+            self.indicatorPxPosition = self.getPxPosition()
             if self.MULTILINE:
                 self.MULTILINE.setCurrent(self)
             return self
         
         def updateOverflow(self):
-            self.overflow = self.textComponent.width - (self.width - 4)
+            self.overflow = max(self.textComponent.width - (self.width - 4), 0)
             if self.overflow > 0:
                 self.textComponent.position[0] = 2 - self.overflow
             else:
                 self.textComponent.position[0] = 2
             
         def appendChar(self, char):
-            self.doBlink = False
-            self.textComponent.text = self.textComponent.text[:self.indicatorPosition] + char + self.textComponent.text[self.indicatorPosition:]
+            if self.indicatorPosition == len(self.textComponent.text)-1:
+                self.textComponent.text += char
+            else:
+                self.textComponent.text = self.textComponent.text[:self.indicatorPosition] + char + self.textComponent.text[self.indicatorPosition:]
             self.textComponent.refresh()
-            self.indicatorPosition += 1
+            self.indicatorPosition += len(char)
             self.updateOverflow()
             if self.MULTILINE != None:
-                if self.overflow > 2:
+                if self.overflow > 0:
                     newt = self.textComponent.text[max(self.textComponent.text.rfind(" "),
-                                                       self.textComponent.text.rfind("-"),
-                                                       self.textComponent.text.rfind("."))+1:]
+                                                       self.textComponent.text.rfind("-")):]
+                    self.textComponent.text = self.textComponent.text.rstrip(newt)
                     self.MULTILINE.addField(newt)
-                    self.textComponent.text.rstrip(newt)
+                    self.MULTILINE.wrappedLines.append(self.MULTILINE.currentField)
+                    #if self.MULTILINE.currentField == len(self.MULTILINE.textFields)-1:
+                    #    self.MULTILINE.addField(newt)
+                    #else:
+                    #    self.MULTILINE.prependToNextField(newt)
+                    self.textComponent.refresh()
                     self.updateOverflow()
+            self.indicatorPxPosition = self.getPxPosition()
             
         def backspace(self):
             if self.indicatorPosition >= 1:
                 self.indicatorPosition -= 1
-                self.indicatorPxPosition -= self.textComponent.width/len(self.textComponent.text)
+                self.indicatorPxPosition = self.getPxPosition()
                 self.textComponent.text = self.textComponent.text[:self.indicatorPosition] + self.textComponent.text[self.indicatorPosition+1:]
                 self.textComponent.refresh()
+            else:
+                if self.MULTILINE != None and self.MULTILINE.currentField > 0:
+                    self.MULTILINE.removeField(self)
+                    self.MULTILINE.textFields[self.MULTILINE.currentField-1].appendChar(self.textComponent.text.strip(" "))
+                    self.MULTILINE.textFields[self.MULTILINE.currentField-1].activate()
             self.updateOverflow()
                 
         def delete(self):
@@ -1055,6 +1142,10 @@ class GUI(object):
                 
         def getText(self):
             return self.textComponent.text
+        
+        def refresh(self):
+            self.updateOverflow()
+            super(GUI.TextEntryField, self).refresh()
                 
         def render(self, largerSurface):
             if not self.transparent:
@@ -1415,10 +1506,10 @@ class GUI(object):
             #Defaults to creating a text component.
             data["scrollAmount"] = data.get("lineHeight", textComponent.lineHeight if textComponent != DEFAULT else 16)
             super(GUI.TextScrollableContainer, self).__init__(position, **data)
-            self.textComponent = textComponent
-            if self.textComponent == None:
+            if textComponent == DEFAULT:
                 self.textComponent = GUI.ExpandingMultiLineText((0, 0), "", state.getColorPalette().getColor("item"), width=self.container.width, height=self.container.height, scroller=self)
             else:
+                self.textComponent = textComponent
                 if self.textComponent.width == self.width:
                     self.textComponent.width = self.container.width
                     self.textComponent.refresh()
@@ -1440,9 +1531,9 @@ class GUI(object):
             self.backgroundColor = data.get("backgroundColor", state.getColorPalette().getColor("background"))
             self.textColor = data.get("color", state.getColorPalette().getColor("item"))
             self.textFields = []
+            self.wrappedLines = []
             self.currentField = -1
-            for line in initialText.replace("\r", "").split("\n"):
-                self.addField(line)
+            self.setText(initialText)
             
         def activateLast(self):
             self.currentField = len(self.textFields) - 1
@@ -1457,14 +1548,28 @@ class GUI(object):
             self.currentField = self.textFields.index(field)
             
         def addField(self, initial_text):
-            if len(self.textFields) == self.maxLines: return
+            if len(self.textFields) == self.maxLines: 
+                return
             field = GUI.TextEntryField((0, 0), initial_text, width=self.container.width, height=self.lineHeight,
                                        backgroundColor=self.backgroundColor, textColor=self.textColor)
             field.border = 0
             field.MULTILINE = self
             self.currentField += 1
             self.textFields.insert(self.currentField, field)
+            field.activate()
             self.refresh()
+            
+#         def prependToNextField(self, text): #HOLD FOR NEXT RELEASE
+#             print "Prep: "+text
+#             self.currentField += 1
+#             currentText = self.textFields[self.currentField].textComponent.text
+#             self.textFields[self.currentField].textComponent.text = ""
+#             self.textFields[self.currentField].indicatorPosition = 0
+#             self.textFields[self.currentField].refresh()
+#             self.textFields[self.currentField].activate()
+#             for word in (" "+text+" "+currentText).split(" "):
+#                 self.textFields[self.currentField].appendChar(word+" ")
+#             self.textFields[self.currentField].refresh()
             
         def removeField(self, field):
             if self.currentField > 0:
@@ -1488,10 +1593,43 @@ class GUI(object):
                 
         def getText(self):
             t = ""
+            p = 0
             for ftext in [f.getText() for f in self.textFields]:
-                t += ftext + "\n"
+                if p in self.wrappedLines:
+                    t += ftext
+                else:
+                    t += ftext + "\n"
+                p += 1
             t.rstrip("\n")
             return t
+        
+        def clear(self):
+            self.textFields = []
+            self.wrappedLines = []
+            self.currentField = -1
+            self.refresh()
+            
+        def setText(self, text):
+            self.clear()
+            if text == "":
+                self.addField("")
+            else:
+                for line in text.replace("\r", "").split("\n"):
+                    self.addField("")
+                    line = line.rstrip()
+                    words = line.split(" ")
+                    oldN = self.currentField
+                    for word in words:
+                        self.textFields[self.currentField].appendChar(word)
+                        self.textFields[self.currentField].appendChar(" ")
+                    if oldN != self.currentField:
+                        for n in range(oldN, self.currentField): self.wrappedLines.append(n)
+                for field in self.textFields:
+                    if field.overflow > 0:
+                        field.textComponent.setText(field.textComponent.text.rstrip(" "))
+                        field.updateOverflow()
+            self.refresh()
+            state.getKeyboard().deactivate()
    
     class FunctionBar(object):
         def __init__(self):
@@ -1627,7 +1765,6 @@ class GUI(object):
                 if mult != None:
                     mult.textFields[mult.currentField].doBlink = False
                     mult.addField("")
-                    mult.textFields[mult.currentField].activate()
                 return
             if char == self.bkspc_sym:
                 self.textEntryField.backspace()
@@ -2045,7 +2182,7 @@ class Application(object):
         self.title = str(app_data.get("title", self.name))
         self.version = float(app_data.get("version", 0.0))
         self.author = str(app_data.get("author", "No Author"))
-        self.module = import_module("apps." + str(app_data.get("module")), "apps")
+        self.module = import_module("apps." + str(app_data.get("module", self.name)), "apps")
         self.module.state = state
         self.file = None
         try:
@@ -2054,10 +2191,7 @@ class Application(object):
             self.mainMethod = Application.dummy
         try: self.parameters = app_data.get("more")
         except: pass
-        try:
-            self.description = app_data.get("description")
-        except:
-            self.description = "No Description."
+        self.description = app_data.get("description", "No Description.")
         #Immersion check
         if "immersive" in self.parameters:
             self.immersionUI = ImmersionUI(self)
@@ -2363,6 +2497,8 @@ class State(object):
         global state
         rFnt = pygame.font.Font(None, 16)
         rClock = pygame.time.Clock()
+        state.getNotificationQueue().clear()
+        state.getEventQueue().clear()
         print "Recovery menu entered."
         while True:
             rClock.tick(10)

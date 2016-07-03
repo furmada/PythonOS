@@ -431,6 +431,48 @@ class FolderPicker(pyos.GUI.Overlay):
         self.hide()
         self.onSelectMethod(*(self.onSelectData + (path,)))
         
+class SaveAs(object):
+    def __init__(self, promptText, startDir="default", **data):
+        self.onSelectMethod = data.get("onSelect", pyos.Application.dummy)
+        self.onSelectData = data.get("onSelectData", ())
+        self.prompt = promptText
+        self.startDir = startDir
+        self.folder = ""
+        self.name = ""
+        self.path = None
+        
+    def displayFolderSelectionDialog(self):
+        FolderPicker(("5%", "5%"), width="90%", height="90%", startFolder=self.startDir,
+                     onSelect=self.saveFolderSelection).display()
+        
+    def saveFolderSelection(self, path):
+        self.folder = path
+        self.displayNameDialog()
+        
+    def displayNameDialog(self):
+        pyos.GUI.AskDialog("Save As", self.prompt, self.saveName).display()
+        
+    def saveName(self, name):
+        self.name = name
+        self.path = pyos.os.path.join(self.folder, self.name)
+        if pyos.os.path.exists(self.path):
+            self.displayOverwriteDialog()
+        else:
+            self.select()
+    
+    def displayOverwriteDialog(self):
+        pyos.GUI.YNDialog("Overwrite?", "The file "+self.name+" already exists, and will be overwritten if you continue.",
+                          self.parseOverwrite).display()
+        
+    def parseOverwrite(self, resp):
+        if resp == "Yes": self.select()
+        
+    def select(self):
+        self.onSelectMethod(*(self.onSelectData + (self.path,)))
+        
+    def display(self):
+        self.displayFolderSelectionDialog()
+        
 def onStart(s, a):
     global state, application
     state = s
