@@ -25,10 +25,10 @@ Now, let's write a simple "Hello World" app.
 
 Start by creating a folder titled "helloworld" under apps/.
 
-In that folder, make two files, an \__init__.py and an app.json.
+In that folder, make two files, an `__init__.py` and an `app.json`.
 
-The app.json file will contain:
-```
+The `app.json` file will contain:
+```json
 {
 	"name": "helloworld",
 	"title": "Hello World",
@@ -40,7 +40,7 @@ The app.json file will contain:
 }
 ```
 
-The \__init__.py file will contain:
+The `__init__.py` file will contain:
 ```python
 import pyos
 
@@ -48,4 +48,5 @@ def hello(state, app):
 	app.ui.addChild(pyos.GUI.Text((5, 5), "Hello World!"))
 ```
 
-Now, enter the About app and long press the "Start State Shell" button to launch the Debug App Bind feature. Open your app's folder, then press the green dot button to select it and associate the app with the system. 
+- Now, enter the About app and ***long press*** the "Start State Shell" button to launch the Debug App Bind feature.
+- Open your app's folder, then press the green dot button to select it and associate the app with the system. 
