@@ -1,3 +1,6 @@
 docs/donau.ogg
 *.pyc
-.settings
+.settings/
+.project
+.pydevproject
+
