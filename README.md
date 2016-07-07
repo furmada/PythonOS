@@ -1,4 +1,5 @@
-﻿#Python OS 6 
+Python OS 6 
+---
 
 Python OS 6 is the ultimate interface for touch-enabled microcomputers such as the Raspberry Pi. It offers a complete interface replacement, an application management and distribution system, and a UI toolkit for creating event-driven apps in Python.
 
@@ -24,7 +25,7 @@ Now, let's write a simple "Hello World" app.
 
 Start by creating a folder titled "helloworld" under apps/.
 
-In that folder, make two files, an \__init__.py\ and an app.json.
+In that folder, make two files, an \__init__.py and an app.json.
 
 The app.json file will contain:
 ```
@@ -39,7 +40,7 @@ The app.json file will contain:
 }
 ```
 
-The \__init__.py\ file will contain:
+The \__init__.py file will contain:
 ```python
 import pyos
 
