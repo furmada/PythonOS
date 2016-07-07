@@ -48,4 +48,5 @@ def hello(state, app):
 	app.ui.addChild(pyos.GUI.Text((5, 5), "Hello World!"))
 ```
 
-Now, enter the About app and long press the "Start State Shell" button to launch the Debug App Bind feature. Open your app's folder, then press the green dot button to select it and associate the app with the system. 
+- Now, enter the About app and ***long press*** the "Start State Shell" button to launch the Debug App Bind feature.
+- Open your app's folder, then press the green dot button to select it and associate the app with the system. 
