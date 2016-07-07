@@ -2,7 +2,7 @@
 Created on Dec 27, 2015
 
 @author: Adam Furman
-@copyright: Open Source
+@copyright: MIT License
 '''
 import pygame
 import json
@@ -185,6 +185,7 @@ class GUI(object):
         self.update_interval = 30
         pygame.init()
         if __import__("sys").platform == "linux2" and os.path.isdir("/home/pi"):
+            pygame.mouse.set_visible(False)
             info = pygame.display.Info()
             self.width = info.current_w
             self.height = info.current_h
@@ -2672,8 +2673,6 @@ if __name__ == "__main__":
     __builtin__.state = state
     #TEST
     #State.state_shell()
-    if __import__("sys").platform == 'linux2':
-        pygame.mouse.set_visible(False)
     state.getApplicationList().getApp("home").activate()
     try:
         State.main()
