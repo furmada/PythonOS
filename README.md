@@ -1,4 +1,5 @@
-﻿#Python OS 6 
+Python OS 6 
+---
 
 Python OS 6 is the ultimate interface for touch-enabled microcomputers such as the Raspberry Pi. It offers a complete interface replacement, an application management and distribution system, and a UI toolkit for creating event-driven apps in Python.
 
