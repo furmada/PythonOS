@@ -40,7 +40,7 @@ The app.json file will contain:
 ```
 
 The \__init__.py\ file will contain:
-```
+```python
 import pyos
 
 def hello(state, app):
