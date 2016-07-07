@@ -27,7 +27,7 @@ Start by creating a folder titled "helloworld" under apps/.
 
 In that folder, make two files, an `__init__.py` and an `app.json`.
 
-The app.json file will contain:
+The `app.json` file will contain:
 ```json
 {
 	"name": "helloworld",
