@@ -184,7 +184,7 @@ class GUI(object):
         self.timer = None
         self.update_interval = 30
         pygame.init()
-        if __import__("sys").platform == "linux2":
+        if __import__("sys").platform == "linux2" and os.path.isdir("/home/pi"):
             info = pygame.display.Info()
             self.width = info.current_w
             self.height = info.current_h
