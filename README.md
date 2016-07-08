@@ -35,7 +35,7 @@ The `app.json` file will contain:
 	"author": "Your_Name",
 	"version": 1.0,
 	"more": {
-		"onStart": "hello",
+		"onStart": "hello"
 	}
 }
 ```
