@@ -2,7 +2,7 @@ Python OS 6
 ---
 
 [![GitHub Stars](https://img.shields.io/github/stars/furmada/pythonos.svg)](https://github.com/furmada/pythonos/stargazers)
-[![GitHub Issues](https://img.shields.io/github/issues/furmada/pythonos.svg)](https://github.com/furmada/pythonos/issues)
+[![GitHub pull requests](https://img.shields.io/github/issues-pr/furmada/pythonos.svg)](https://github.com/furmada/PythonOS/pulls)
 [![GitHub Wiki](https://img.shields.io/badge/project-wiki-ff69b4.svg)](https://github.com/furmada/pythonos/wiki/Home)
 [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/furmada/PythonOS/blob/master/LICENSE)
 [![Github All Releases](https://img.shields.io/github/downloads/furmada/pythonos/total.svg?maxAge=2592000)](https://github.com/furmada/PythonOS/releases)
