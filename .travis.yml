@@ -5,8 +5,8 @@ python:
 dist: trusty
 
 before_install:
-    - sudo apt-get build-dep python-pygame
-    - sudo apt-get install mercurial
+    - sudo apt-get build-dep python-pygame -y
+    - sudo apt-get install mercurial -y
     
 install:
     - pip install hg+http://bitbucket.org/pygame/pygame
