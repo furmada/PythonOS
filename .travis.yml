@@ -3,7 +3,6 @@ python:
     - "2.7"
     
 before_install:
-    - sudo apt-get purge python-pygame
     - sudo apt-get build-dep python-pygame
     - sudo apt-get install mercurial
     
