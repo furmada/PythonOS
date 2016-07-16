@@ -5,6 +5,7 @@ Python OS 6
 [![GitHub Issues](https://img.shields.io/github/issues/furmada/pythonos.svg)](https://github.com/furmada/pythonos/issues)
 [![GitHub Wiki](https://img.shields.io/badge/project-wiki-ff69b4.svg)](https://github.com/furmada/pythonos/wiki/Home)
 [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/furmada/PythonOS/blob/master/LICENSE)
+[![Github All Releases](https://img.shields.io/github/downloads/furmada/pythonos/total.svg?maxAge=2592000)]()
 
 Python OS 6 is the ultimate interface for touch-enabled microcomputers such as the Raspberry Pi. It offers a complete interface replacement, an application management and distribution system, and a UI toolkit for creating event-driven apps in Python.
 
