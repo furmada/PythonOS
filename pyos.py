@@ -2142,7 +2142,7 @@ class Application(object):
         app_info = json.loads(str(unicode(app_listing.read(), errors="ignore")))
         app_listing.close()
         app_name = str(app_info.get("name"))
-        if app_name not in state.getApplicationList().getApplicationList():
+        if app_name not in state.getApplicationList().applications.keys():
             os.mkdir(os.path.join("apps/", app_name))
         else:
             print "Upgrading "+app_name

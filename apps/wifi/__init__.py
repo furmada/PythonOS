@@ -63,6 +63,7 @@ class Network(pyos.GUI.Container):
         
     def connect(self, pwd):
         self.connBtn.setText("...")
+        pwd = pwd[0]
         try:
             scheme = wifi.Scheme.for_cell("wlan0", self.cell.ssid, self.cell, pwd)
             scheme.save()

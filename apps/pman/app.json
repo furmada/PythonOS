@@ -1,15 +1,18 @@
-﻿{
+{
   "name": "pman",
-  "title": "Software",
-  "version": 1.1,
+  "title": "PMan",
+  "version": 2.0,
   "author": "Adam Furman",
   "module": "pman",
-  "main": "run",
   "more": {
     "icon": "pman.png",
     "onStart": "onStart",
-    "colorScheme": "normal",
+    "colorScheme": "light",
     "file": [".zip"]
   },
-  "description": "Manage, install, and update packages. This application requires an Internet connection."
+  "description": "Manage, install, and update packages. This application requires an Internet connection.",
+  "pman": {
+  	"depends": ["files"],
+  	"min_os": 1.0
+  }
 }
