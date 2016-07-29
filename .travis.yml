@@ -2,10 +2,10 @@ language: python
 python:
     - "2.7"
     
+dist: trusty
+
 before_install:
-    - sudo apt-get purge python-pygame
-    - sudo apt-get build-dep python-pygame
-    - sudo apt-get install mercurial
+    - sudo apt-get build-dep python-pygame mercurial -y
     
 install:
     - pip install hg+http://bitbucket.org/pygame/pygame
@@ -13,4 +13,4 @@ install:
 virtualenv:
     system_site_packages: true
     
-script: nosetests 
+script: nosetests -v
