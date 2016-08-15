@@ -19,6 +19,18 @@ Key features include:
 * Color themes and icons that help you make beautiful, polished apps.
 * Easy persistent storage.
 
+##Donate to Python OS
+Support the development of this platform by making a donation in any amount. You may choose to enter your name (or username) on the donation screen and it will be added to the About app. Thank you!
+
+
+<form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
+<input type="hidden" name="cmd" value="_s-xclick" />
+<input type="hidden" name="hosted_button_id" value="D3S2P7GMS8MZJ" />
+<input type="image" src="https://www.paypal.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Donate" />
+<img alt="" border="0" src="https://www.paypal.com/en_US/i/scr/pixel.gif" width="1" height="1" />
+</form>
+
+
 ##Get Started
 ###As a User
 
