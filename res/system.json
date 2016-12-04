@@ -1,6 +1,6 @@
 {
 	"name": "Python OS 6",
-	"version": 1.01,
-	"beta": false,
-	"betaVersion": 0
+	"version": 1.2,
+	"beta": true,
+	"betaVersion": 1
 }

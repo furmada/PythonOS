@@ -1,0 +1,16 @@
+{
+  "name": "editor",
+  "title": "Editor",
+  "version": 1.3,
+  "author": "Adam Furman",
+  "module": "editor",
+  "more": {
+    "icon": "icon.png",
+    "onStart": "onStart",
+    "onPause": "save",
+    "onStop": "save",
+    "colorScheme": "light",
+    "file": [ ".txt", ".htm", ".html", ".py", ".pyw", ".json", ".md" ]
+  },
+  "description": "Creates and edits plain text format files."
+}

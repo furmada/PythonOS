@@ -4,6 +4,8 @@ from urllib import urlretrieve
 from apps.pman.fuzzywuzzy import fuzz
 from datetime import timedelta
 
+import time
+
 """
 PMan Specific app.json parameters.
 Specified under the key "pman".
@@ -244,7 +246,7 @@ class UpdateScreen(Screen):
         au = 0
         for lapp in sorted(state.getApplicationList().getApplicationList(), key=lambda x: x.title):
             if cache.get(lapp.name).get("version", 0.0) > lapp.version:
-                self.scroller.addChild(self.sizesel.getEntry(lapp.name, pman.openScreen(AppScreen(lapp.name)), self.scroller.container))
+                self.scroller.addChild(self.sizesel.getEntry(lapp.name, AppScreen(lapp.name).activate, self.scroller.container))
                 au += 1
         self.statustxt.setText(str(au)+" Updates")
         self.scroller.removeChild(txt)
@@ -382,6 +384,7 @@ class MainScreen(Screen):
 class Cache(pyos.DataStore):
     def __init__(self, doDialog=True):
         self.dsPath = "apps/pman/cache.json"
+        self.application = app
         self.featured = []
         self.progressInfo = "Updating Cache"
         self.dialog = None if not doDialog else ProgressDialog()
@@ -478,16 +481,18 @@ class Installer(object):
         if deps == []: 
             deps = cache.get(appname).get("pman", {}).get("depends", [])
             oan = appname
+        print appname + " depends on " + str(deps)
+        print deps
         for d in deps:
             if d == appname:
                 print "Warning: The app "+appname+" depends on itself."
                 continue
-            sd = Installer.getDependencies(d, deps, oan)
+            sd = Installer.getDependencies(d, [], oan)
             for s in sd:
                 if s == oan:
                     print "Warning: The dependency of "+appname+", "+s+", depends on the original package "+oan+"."
                     continue
-                if s not in deps or cache.get(s).get("version") > state.getApplicationList().getApp(s).version:
+                if (s not in deps) or (s in state.getApplicationList().getApplicationList() and cache.get(s).get("version") > state.getApplicationList().getApp(s).version):
                     deps.append(s)
         return deps
         
@@ -505,9 +510,6 @@ class Installer(object):
             if cache.get(tia).get("pman", {}).get("min_os", 0.0) > pman.sysInf.get("version"):
                 self.dialog.update("!!! The install cannot continue because the package "+tia+" requires a newer version of Python OS.")
                 return
-            if tia in state.getApplicationList().applications.keys():
-                toinst.remove(tia)
-                continue
             pim = cache.get(tia).get("pman", {}).get("onInstalled", None)
             if pim != None:
                 post_install.append([tia, pim])
@@ -575,6 +577,13 @@ class PackageManager(object):
         
     def checkDBFresh(self):
         lupd = app.dataStore.get("lastUpdate", None)
+        try:
+            if len(cache.getStore().keys()) <= 1:
+                print "Empty Cache"
+                app.dataStore.set("featured", [])
+                raise AttributeError
+        except:
+            lupd = None
         if lupd != None: diffdel = (pyos.datetime.now() - pyos.datetime.strptime(lupd, "%a %b %d %H:%M:%S %Y"))
         if lupd == None or diffdel > timedelta(days=1):
             cache.bgUpdate()

@@ -435,6 +435,8 @@ class SaveAs(object):
     def __init__(self, promptText, startDir="default", **data):
         self.onSelectMethod = data.get("onSelect", pyos.Application.dummy)
         self.onSelectData = data.get("onSelectData", ())
+        self.extension = data.get("extension", "")
+        self.nameText = data.get("name", "")
         self.prompt = promptText
         self.startDir = startDir
         self.folder = ""
@@ -450,10 +452,12 @@ class SaveAs(object):
         self.displayNameDialog()
         
     def displayNameDialog(self):
-        pyos.GUI.AskDialog("Save As", self.prompt, self.saveName).display()
+        ad = pyos.GUI.AskDialog("Save As", self.prompt, self.saveName)
+        ad.textEntryField.appendChar(self.nameText)
+        ad.display()
         
     def saveName(self, name):
-        self.name = name
+        self.name = name + self.extension if not name.endswith(self.extension) else name
         self.path = pyos.os.path.join(self.folder, self.name)
         if pyos.os.path.exists(self.path):
             self.displayOverwriteDialog()

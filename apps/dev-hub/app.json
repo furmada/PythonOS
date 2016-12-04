@@ -1,0 +1,17 @@
+{
+  "name": "dev-hub",
+  "title": "Dev Hub",
+  "version": 1.0,
+  "author": "Adam Furman",
+  "more": {
+    "icon": "dev-hub.png",
+    "onStart": "onStart",
+    "colorScheme": "dark",
+    "file": [".zip"]
+  },
+  "description": "This development tool lets you create, design, and package Python OS apps.",
+  "pman": {
+  	"depends": ["files", "editor", "file-reader"],
+  	"min_os": 1.0
+  }
+}

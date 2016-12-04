@@ -1,7 +1,7 @@
 {
   "name": "pman",
   "title": "PMan",
-  "version": 2.0,
+  "version": 2.3,
   "author": "Adam Furman",
   "module": "pman",
   "more": {
@@ -10,7 +10,7 @@
     "colorScheme": "light",
     "file": [".zip"]
   },
-  "description": "Manage, install, and update packages. This application requires an Internet connection.",
+  "description": "Explore, download, and update Python OS apps. The redesigned package manager features a new interface and powerful functionality.",
   "pman": {
   	"depends": ["files"],
   	"min_os": 1.0
