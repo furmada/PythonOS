@@ -69,10 +69,12 @@ def loadApps(pstate, app):
                                          onClick=app.activate, onLongClick=displayInfoDialog, onLongClickData=(app,))
         appPane.SKIP_CHILD_CHECK = True
         appIcon = pyos.GUI.Image((0, 0), surface=app.getIcon(), onClick=app.activate) #Long click uninstall
-        appName = pyos.GUI.Text((0, appIcon.height), app.title, state.getColorPalette().getColor("item"), 12,
+        appName = pyos.GUI.Text((0, 0), app.title, state.getColorPalette().getColor("item"), 12,
                                 onClick=app.activate, onLongClick=uninstallAsk, onLongClickData=(app,))
         appIcon.position[0] = pyos.GUI.getCenteredCoordinates(appIcon, appPane)[0]
         appName.position[0] = pyos.GUI.getCenteredCoordinates(appName, appPane)[0]
+        appIcon.position[1] = pyos.GUI.getCenteredCoordinates(appIcon, appPane)[1] - appName.height + 2
+        appName.position[1] = appIcon.position[1] + appIcon.height
         appPane.addChild(appIcon)
         appPane.addChild(appName)
         pagedContainer.addChild(appPane)

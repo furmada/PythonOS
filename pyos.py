@@ -682,6 +682,9 @@ class GUI(object):
             if "children" in data: self.childComponents = data["children"]
             
         def addChild(self, component):
+            if self.resizable and "resizeble" not in component.data:
+                component.resizable = True
+                component.refresh()
             self.childComponents.append(component)
             
         def addChildren(self, *children):
@@ -1015,6 +1018,10 @@ class GUI(object):
             self.textComponent.setPosition(GUI.getCenteredCoordinates(self.textComponent, self))
             self.backgroundColor = bgColor
             self.addChild(self.textComponent)
+            
+        def setDimensions(self):
+            super(GUI.Button, self).setDimensions()
+            self.textComponent.setPosition(GUI.getCenteredCoordinates(self.textComponent, self))
             
         def setText(self, text):
             self.textComponent.text = str(text)
@@ -1433,12 +1440,13 @@ class GUI(object):
             return None
             
         def addChild(self, component):
-            component.computedHeight = self.computedHeight - (2*self.padding)
+            component.height = self.computedHeight - (2*self.padding)
             last = self.getLastComponent()
             if last != None:
                 component.setPosition([last.computedPosition[0]+last.computedWidth+self.margin, self.padding])
             else:
                 component.setPosition([self.padding, self.padding])
+            component.setDimensions()
             super(GUI.ButtonRow, self).addChild(component)
             
         def removeChild(self, component):
