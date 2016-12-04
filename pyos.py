@@ -1803,7 +1803,8 @@ class GUI(object):
             self.baseContainer.setPosition((0, 2*(state.getGUI().height/3)))
             self.keyWidth = self.baseContainer.computedWidth / 10
             self.keyHeight = self.baseContainer.computedHeight / 4
-            if state.getTypingFont().freetype:
+            use_ft = state.getTypingFont().freetype != False
+            if use_ft:
                 self.shift_sym = u"\u21E7"
                 self.enter_sym = u"\u23CE"
                 self.bkspc_sym = u"\u232B"
@@ -1833,18 +1834,20 @@ class GUI(object):
                         button = GUI.KeyboardButton((sym * self.keyWidth, row * self.keyHeight), "", self.keys2[row][sym],
                                                     onClick=self.insertChar, onClickData=(self.keys1[row][sym],), 
                                                     onLongClick=self.insertChar, onLongClickData=(self.keys2[row][sym],),
-                                                    width=self.keyWidth*5, height=self.keyHeight)
+                                                    width=self.keyWidth*5, height=self.keyHeight, freetype=use_ft)
                     else:
                         if symbol == self.shift_sym or symbol == self.enter_sym or symbol == self.bkspc_sym or symbol == self.delet_sym:
                             button = GUI.KeyboardButton((sym * self.keyWidth, row * self.keyHeight), self.keys1[row][sym], self.keys2[row][sym],
                                                     onClick=self.insertChar, onClickData=(self.keys1[row][sym],), 
                                                     onLongClick=self.insertChar, onLongClickData=(self.keys2[row][sym],),
-                                                    width=self.keyWidth, height=self.keyHeight, border=1, borderColor=state.getColorPalette().getColor("accent"))
+                                                    width=self.keyWidth, height=self.keyHeight, border=1, borderColor=state.getColorPalette().getColor("accent"),
+                                                    freetype=use_ft)
                         else:
                             button = GUI.KeyboardButton((sym * self.keyWidth, row * self.keyHeight), self.keys1[row][sym], self.keys2[row][sym],
                                                         onClick=self.insertChar, onClickData=(self.keys1[row][sym],), 
                                                         onLongClick=self.insertChar, onLongClickData=(self.keys2[row][sym],),
-                                                        width=self.keyWidth, height=self.keyHeight)
+                                                        width=self.keyWidth, height=self.keyHeight,
+                                                        freetype=use_ft)
                     self.baseContainer.addChild(button)
                     sym += 1
                 row += 1
