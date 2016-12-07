@@ -11,7 +11,7 @@ Python OS 6
 
 Python OS 6 is the ultimate interface for touch-enabled microcomputers such as the Raspberry Pi. It offers a complete interface replacement, an application management and distribution system, and a UI toolkit for creating event-driven apps in Python.
 
-The OS currently supports a 240x320 display, but this will change in the future.
+The stable version OS currently supports a 240x320 display, while the development version supports any screen size.
 
 Key features include:
 * Application stack with support for threading, suspend, and app switch.
