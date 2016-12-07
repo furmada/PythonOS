@@ -117,7 +117,6 @@ class AppActionButton(pyos.GUI.Button):
     def __init__(self, position, appname, w, h):
         self.app = appname
         super(AppActionButton, self).__init__(position, "", width=w, height=h)
-        self.refresh()
         
     def refresh(self):
         if self.app in state.getApplicationList().applications.keys():
@@ -138,32 +137,32 @@ class UIParts:
     @staticmethod
     def smallAppEntry(appname, onC, fits="appui"):
         if fits == "appui": fits = app.ui
-        cont = pyos.GUI.Container((0, 0), width=fits.width, height=20, border=1, onClick=onC)
+        cont = pyos.GUI.Container((0, 0), width=fits.computedWidth, height=20, border=1, onClick=onC)
         cont.addChild(AppIcon((0, 0), appname, 20, 20, onClick=onC))
         cont.addChild(pyos.GUI.Text((22, 2), cache.get(appname)["title"], pyos.DEFAULT, 16, onClick=onC))
-        cont.addChild(AppActionButton((cont.width-40, 0), appname, 40, 20))
+        cont.addChild(AppActionButton((cont.computedWidth-40, 0), appname, 40, 20))
         return cont
     
     @staticmethod
     def normalAppEntry(appname, onC, fits="appui"):
         if fits == "appui": fits = app.ui
-        cont = pyos.GUI.Container((0, 0), width=fits.width, height=40, border=1, onClick=onC)
+        cont = pyos.GUI.Container((0, 0), width=fits.computedWidth, height=40, border=1, onClick=onC)
         cont.addChild(AppIcon((0, 0), appname, 40, 40, onClick=onC))
         cont.addChild(pyos.GUI.Text((42, 2), cache.get(appname)["title"], pyos.DEFAULT, 18, onClick=onC))
         cont.addChild(pyos.GUI.Text((42, 22), cache.get(appname)["author"], pyos.DEFAULT, 14, onClick=onC))
-        cont.addChild(AppActionButton((cont.width-60, 0), appname, 60, 40))
+        cont.addChild(AppActionButton((cont.computedWidth-60, 0), appname, 60, 40))
         return cont
     
     @staticmethod
     def largeAppEntry(appname, onC, fits="appui"):
         if fits == "appui": fits = app.ui
-        cont = pyos.GUI.Container((0, 0), width=fits.width, height=64, border=1, onClick=onC)
+        cont = pyos.GUI.Container((0, 0), width=fits.computedWidth, height=64, border=1, onClick=onC)
         cont.addChild(AppIcon((0, 0), appname, 40, 40, onClick=onC))
         cont.addChild(pyos.GUI.Text((42, 2), cache.get(appname)["title"], pyos.DEFAULT, 18, onClick=onC))
         cont.addChild(pyos.GUI.Text((42, 22), cache.get(appname)["author"], pyos.DEFAULT, 14, onClick=onC))
-        cont.addChild(AppActionButton((cont.width-60, 0), appname, 60, 40))
+        cont.addChild(AppActionButton((cont.computedWidth-60, 0), appname, 60, 40))
         dt = cache.get(appname).get("description", "No Description.")
-        cont.addChild(pyos.GUI.MultiLineText((2, 40), dt[:dt.find(".")], pyos.DEFAULT, 12, width=cont.width, height=24))
+        cont.addChild(pyos.GUI.MultiLineText((2, 40), dt[:dt.find(".")], pyos.DEFAULT, 12, width=cont.computedWidth, height=24))
         return cont
     
 class SizeSelector(pyos.GUI.Selector):

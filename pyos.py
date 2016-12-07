@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 '''
 Created on Dec 27, 2015
 
@@ -426,7 +428,7 @@ class GUI(object):
             self.pos = self.mouseDown.pos
             
         def intermediateUpdate(self, mouseMove):
-            if self.mouseUp == None:
+            if self.mouseUp == None and (len(self.intermediatePoints) == 0 or mouseMove.pos != self.intermediatePoints[-1]):
                 self.intermediatePoints.append(mouseMove.pos)
             
         def end(self, mouseUp):
@@ -802,19 +804,17 @@ class GUI(object):
             self.color = color
             self.font = data.get("font", state.getFont())
             self.use_freetype = data.get("freetype", False)
+            self.responsive_width = data.get("responsive_width", True)
             data["surface"] = self.getRenderedText()
             super(GUI.Text, self).__init__(position, **data)
             
         def getRenderedText(self):
             if self.use_freetype:
                 return self.font.get(self.size, True).render(str(self.text), self.color)
-            return self.font.get(self.size).render(str(self.text), 1, self.color)
+            return self.font.get(self.size).render(self.text, 1, self.color)
             
         def refresh(self):
-            self.surface = self.getRenderedText()
-            #super(GUI.Text, self).refresh()
-#             self.width = self.surface.get_width()
-#             self.height = self.surface.get_height()
+            self.surface = self.getRenderedText()        
 
         def render(self, largerSurface):
             if self.text != self._originalText:
@@ -823,8 +823,11 @@ class GUI(object):
         
         def setText(self, text):
             self.text = str(text)
-            self.setDimensions()
             self.refresh()
+            if self.responsive_width:
+                self.width = self.surface.get_width()
+                self.height = self.surface.get_height()
+            self.setDimensions()
             
     class MultiLineText(Component):
         @staticmethod
@@ -876,12 +879,12 @@ class GUI(object):
         
         def __init__(self, position, text, color=DEFAULT, size=DEFAULT, justification=DEFAULT, **data):
             #Defaults are "item", and 0 (left).
-            color, justification = GUI.Component.default(color, state.getColorPalette().getColor("item"),
+            color, size, justification = GUI.Component.default(color, state.getColorPalette().getColor("item"), size, 14,
                                                          justification, 0)
             self.justification = justification
             self.color = color
             self.size = size
-            self.text = text
+            self.text = str(text)
             self.textSurface = None
             self.font = data.get("font", state.getFont())
             self.use_freetype = data.get("freetype", False)
@@ -891,16 +894,17 @@ class GUI(object):
                 self.width = state.getGUI().width
                 
         def getRenderedText(self):
-            return GUI.MultiLineText.render_textrect(self.text, self.font.get(self.size, self.use_freetype), pygame.Rect(self.computedPosition[0], self.computedPosition[1], self.computedWidth, self.computedHeight),
+            return GUI.MultiLineText.render_textrect(self.text, self.font.get(self.size, self.use_freetype), pygame.Rect(0, 0, self.computedWidth, self.computedHeight),
                                                      self.color, (0, 0, 0, 0), self.justification, self.use_freetype)[0]
             
         def refresh(self):
             super(GUI.MultiLineText, self).refresh()
             self.textSurface = self.getRenderedText()
+            self.surface.fill((0, 0, 0, 0))
             self.surface.blit(self.textSurface, (0, 0))
             
         def setText(self, text):
-            self.text = str(text)
+            self.text = text if type(text) == str or type(text) == unicode else str(text)
             self.setDimensions()
             self.refresh()
             
@@ -916,7 +920,6 @@ class GUI(object):
             self.textLines = []
             super(GUI.ExpandingMultiLineText, self).__init__(position, text, color, size, justification, **data)
             self.height = self.computedHeight
-            print self.height
             self.refresh()
             
         def getRenderedText(self):
@@ -924,7 +927,7 @@ class GUI(object):
             surf = None
             while not fits:
                 d = GUI.MultiLineText.render_textrect(self.text, self.font.get(self.size), pygame.Rect(self.computedPosition[0], self.computedPosition[1], self.computedWidth, self.height),
-                                                      self.color, (0, 0, 0, 0), self.justification)
+                                                      self.color, (0, 0, 0, 0), self.justification, self.use_freetype)
                 surf = d[0]
                 fits = d[1] != 1
                 self.textLines = d[2]
@@ -940,6 +943,7 @@ class GUI(object):
             self.path = ""
             self.originalSurface = None
             self.transparent = True
+            self.resize_image = data.get("resize_image", True)
             if "path" in data:
                 self.path = data["path"]
             else:
@@ -947,7 +951,10 @@ class GUI(object):
             if "surface" not in data:
                 data["surface"] = pygame.image.load(data["path"])
             self.originalSurface = data["surface"]
+            self.originalWidth = self.originalSurface.get_width()
+            self.originalHeight = self.originalSurface.get_height()
             super(GUI.Image, self).__init__(position, **data)
+            if self.resize_image: self.setSurface(pygame.transform.scale(self.originalSurface, (self.computedWidth, self.computedHeight)))
             
         def setImage(self, **data):
             if "path" in data:
@@ -963,8 +970,10 @@ class GUI(object):
             self.refresh()
             
         def refresh(self):
-            #super(GUI.Image, self).refresh()
-            self.setSurface(pygame.transform.scale(self.originalSurface, (self.computedWidth, self.computedHeight)))
+            if self.resize_image:
+                self.setSurface(pygame.transform.scale(self.originalSurface, (self.computedWidth, self.computedHeight)))
+            else:
+                super(GUI.Image, self).refresh()
             
     class Slider(Component):
         def __init__(self, position, initialPct=0, **data):
@@ -1024,9 +1033,8 @@ class GUI(object):
             self.textComponent.setPosition(GUI.getCenteredCoordinates(self.textComponent, self))
             
         def setText(self, text):
-            self.textComponent.text = str(text)
-            self.textComponent.refresh()
-            self.textComponent.setPosition(GUI.getCenteredCoordinates(self.textComponent, self))
+            self.textComponent.setText(text)
+            self.setDimensions()
             
         def render(self, largerSurface):
             super(GUI.Button, self).render(largerSurface)
@@ -1108,8 +1116,8 @@ class GUI(object):
                 data["borderColor"] = state.getColorPalette().getColor("item")
             super(GUI.KeyboardButton, self).__init__(position, **data)
             self.SKIP_CHILD_CHECK = True
-            self.primaryTextComponent = GUI.Text((1, 0), symbol, state.getColorPalette().getColor("item"), 20, font=state.getTypingFont())
-            self.secondaryTextComponent = GUI.Text((self.computedWidth-8, 0), altSymbol, state.getColorPalette().getColor("item"), 10, font=state.getTypingFont())
+            self.primaryTextComponent = GUI.Text((1, 0), symbol, state.getColorPalette().getColor("item"), 20, font=data.get("font", state.getTypingFont()))
+            self.secondaryTextComponent = GUI.Text((self.computedWidth-8, 0), altSymbol, state.getColorPalette().getColor("item"), 10, font=data.get("font", state.getTypingFont()))
             self.primaryTextComponent.setPosition([GUI.getCenteredCoordinates(self.primaryTextComponent, self)[0]-6, self.computedHeight-self.primaryTextComponent.computedHeight-1])
             self.addChild(self.primaryTextComponent)
             self.addChild(self.secondaryTextComponent)
@@ -1803,6 +1811,7 @@ class GUI(object):
             self.active = False
             self.textEntryField = textEntryField
             self.movedUI = False
+            self._symbolFont = GUI.Font("res/symbols.ttf", 10, 20)
             if self.textEntryField.computedPosition[1] + self.textEntryField.computedHeight > 2*(state.getGUI().height/3) or self.textEntryField.data.get("slideUp", False):
                 state.getActiveApplication().ui.setPosition((0, -80))
                 self.movedUI = True
@@ -1812,16 +1821,16 @@ class GUI(object):
             self.keyWidth = self.baseContainer.computedWidth / 10
             self.keyHeight = self.baseContainer.computedHeight / 4
             use_ft = state.getTypingFont().freetype != False
-            if use_ft:
-                self.shift_sym = u"\u21E7"
-                self.enter_sym = u"\u23CE"
-                self.bkspc_sym = u"\u232B"
-                self.delet_sym = u"\u2326"
-            else:
-                self.shift_sym = "sh"
-                self.enter_sym = "->"
-                self.bkspc_sym = "<-"
-                self.delet_sym = "del"
+            #if use_ft:
+            self.shift_sym = u"⇧"
+            self.enter_sym = u"⏎"
+            self.bkspc_sym = u"⌫"
+            self.delet_sym = u"⌦"
+#             else:
+#                 self.shift_sym = "sh"
+#                 self.enter_sym = "->"
+#                 self.bkspc_sym = "<-"
+#                 self.delet_sym = "del"
             self.keys1 = [["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
                          ["a", "s", "d", "f", "g", "h", "j", "k", "l", self.enter_sym],
                          [self.shift_sym, "z", "x", "c", "v", "b", "n", "m", ",", "."],
@@ -1849,7 +1858,7 @@ class GUI(object):
                                                     onClick=self.insertChar, onClickData=(self.keys1[row][sym],), 
                                                     onLongClick=self.insertChar, onLongClickData=(self.keys2[row][sym],),
                                                     width=self.keyWidth, height=self.keyHeight, border=1, borderColor=state.getColorPalette().getColor("accent"),
-                                                    freetype=use_ft)
+                                                    font=self._symbolFont, freetype=use_ft)
                         else:
                             button = GUI.KeyboardButton((sym * self.keyWidth, row * self.keyHeight), self.keys1[row][sym], self.keys2[row][sym],
                                                         onClick=self.insertChar, onClickData=(self.keys1[row][sym],), 
