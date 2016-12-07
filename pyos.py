@@ -1475,7 +1475,7 @@ class GUI(object):
             self.lastClickCoord = None
             
         def update(self):
-            self.pct = 1.0 * self.scrollContainer.container.computedHeight / self.scrollContainer.maxOffset
+            self.pct = 1.0 * self.scrollContainer.computedHeight / (self.scrollContainer.maxOffset - self.scrollContainer.minOffset)
             self.slide = -self.scrollContainer.offset*self.pct
             self.sih = self.pct * self.computedHeight
             
@@ -1495,7 +1495,7 @@ class GUI(object):
                             
     class ScrollableContainer(Container):
         def __init__(self, position, **data): 
-            self.scrollAmount = data.get("scrollAmount", 15) 
+            self.scrollAmount = data.get("scrollAmount", state.getGUI().height / 8) 
             super(GUI.ScrollableContainer, self).__init__(position, **data)
             self.container = GUI.Container((0, 0), transparent=True, width=self.computedWidth-20, height=self.computedHeight)
             self.scrollBar = GUI.Container((self.computedWidth-20, 0), width=20, height=self.computedHeight)
@@ -1512,27 +1512,21 @@ class GUI(object):
             super(GUI.ScrollableContainer, self).addChild(self.scrollBar)
             self.offset = 0
             self.minOffset = 0
-            self.maxOffset = self.computedHeight
-            print self.computedHeight
+            self.maxOffset = self.container.computedHeight
             self.scrollIndicator.update()
             
         def scroll(self, amount):
             if amount < 0:
                 if self.offset - amount - self.computedHeight <= -self.maxOffset:
-                    self.scrollTo(-self.maxOffset + self.computedHeight)
                     return
             else:
                 if self.offset + amount > self.minOffset:
-                    self.offset = self.minOffset
+                    #self.offset = -self.minOffset
                     return
             for child in self.container.childComponents:
                 child.position[1] = child.computedPosition[1]+amount
             self.offset += amount
             self.scrollIndicator.update()
-            
-        def scrollTo(self, amount):
-            self.scroll(-self.offset)
-            self.scroll(amount)
                 
         def getVisibleChildren(self):
             visible = []
@@ -1620,6 +1614,7 @@ class GUI(object):
             
         def addChild(self, component):
             component.position[1] = self.getCumulativeHeight()
+            component.setDimensions()
             super(GUI.ListScrollableContainer, self).addChild(component)
             
         def removeChild(self, component):
