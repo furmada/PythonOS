@@ -119,10 +119,10 @@ class ApplicationSupport(object):
             pyos.GUI.OKDialog("Cannot Open", "The file "+short+" cannot be opened because no installed application supports the "+path[path.rfind("."):]+" format.").display()
             return
         text = pyos.GUI.Text((2, 2), "Select an application to open "+str(short), state.getColorPalette().getColor("item"))
-        self.selector = pyos.GUI.Selector((0, 20), [app.name for app in suitable], width=240, height=40,
+        self.selector = pyos.GUI.Selector((0, 20), [app.name for app in suitable], width=app.ui.width, height=40,
                                      onValueChanged=self.setCurrentSelection,
                                      border=1, borderColor=state.getColorPalette().getColor("item"))
-        cont = pyos.GUI.Container((0, application.ui.height-95), color=state.getColorPalette().getColor("background"), width=240, height=95,
+        cont = pyos.GUI.Container((0, application.ui.height-95), color=state.getColorPalette().getColor("background"), width=app.ui.width, height=95,
                                   border=1, borderColor=state.getColorPalette().getColor("item"))
         cont.addChild(text)
         cont.addChild(self.selector)

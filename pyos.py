@@ -196,6 +196,7 @@ class GUI(object):
         self.timer = None
         self.update_interval = 30
         pygame.init()
+        pygame.display.set_icon(pygame.image.load("res/icons/menu.png"))
         if __import__("sys").platform == "linux2" and os.path.isdir("/home/pi"):
             pygame.mouse.set_visible(False)
             info = pygame.display.Info()
@@ -822,7 +823,8 @@ class GUI(object):
             super(GUI.Text, self).render(largerSurface)
         
         def setText(self, text):
-            self.text = str(text)
+            self.text = text if type(text) == str or type(text) == unicode else str(text)
+            self._originalText = self.text
             self.refresh()
             if self.responsive_width:
                 self.width = self.surface.get_width()
@@ -1188,7 +1190,7 @@ class GUI(object):
             self.lastClickCoord = self.innerClickCoordinates
             
         def getPxPosition(self, fromPos=DEFAULT):
-            return state.getTypingFont().get(16).render(self.textComponent.text[:(self.indicatorPosition if fromPos==DEFAULT else fromPos)], 1, self.textComponent.color).get_width()
+            return state.getTypingFont().get(16).size(self.textComponent.text[:(self.indicatorPosition if fromPos==DEFAULT else fromPos)])[0]
             
         def activate(self):
             self.clearScrollParams()
@@ -2329,6 +2331,7 @@ class Application(object):
         if "onPause" in self.parameters: self.evtHandlers["onPause"] = getattr(self.module, self.parameters["onPause"])
         if "onResume" in self.parameters: self.evtHandlers["onResume"] = getattr(self.module, self.parameters["onResume"])
         if "onCustom" in self.parameters: self.evtHandlers["onCustom"] = getattr(self.module, self.parameters["onCustom"])
+        if "onOSLaunch" in self.parameters: self.evtHandlers["onOSLaunch"] = getattr(self.module, self.parameters["onOSLaunch"])
         self.thread = Thread(self.mainMethod, **self.evtHandlers)
         self.ui = GUI.AppContainer(self)
         self.dataStore = DataStore(self)
@@ -2794,6 +2797,12 @@ if __name__ == "__main__":
     __builtin__.state = state
     #TEST
     #State.state_shell()
+    for app in state.getApplicationList().getApplicationList():
+        if app.evtHandlers.get("onOSLaunch", None) != None:
+            try:
+                app.evtHandlers.get("onOSLaunch")()
+            except:
+                State.error_recovery("App startup task failed to run properly.", "App: " + str(app.name))
     state.getApplicationList().getApp("home").activate()
     try:
         State.main()
