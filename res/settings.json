@@ -2,5 +2,6 @@
 	"screen_size": {
 		"width": 320,
 		"height": 480
-	}
+	},
+	"target_fps": 30
 }

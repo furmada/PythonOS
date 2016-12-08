@@ -117,6 +117,7 @@ class AppActionButton(pyos.GUI.Button):
     def __init__(self, position, appname, w, h):
         self.app = appname
         super(AppActionButton, self).__init__(position, "", width=w, height=h)
+        self.refresh()
         
     def refresh(self):
         if self.app in state.getApplicationList().applications.keys():
@@ -451,9 +452,9 @@ class Installer(object):
         if self.local:
             try:
                 zf = pyos.ZipFile(self.name, "r")
-                zf.extract("app.json", "temp/pman_app.json")
+                zf.extract("app.json", "temp/")
                 self.path = self.name
-                jd = readJSON("temp/pman_app.json")
+                jd = readJSON("temp/app.json")
                 self.name = jd["name"]
                 if jd.get("pman", {}).get("min_os", 0.0) > pman.sysInf.get("version"):
                     pyos.GUI.ErrorDialog("The package requires a newer version of Python OS.").display()
@@ -468,7 +469,7 @@ class Installer(object):
         
     @staticmethod
     def localInstallSelect(path):
-        Installer(path, True)
+        Installer(path, True).start()
         
     @staticmethod
     def localAsk():
@@ -476,22 +477,17 @@ class Installer(object):
                                                                           onSelect=Installer.localInstallSelect).display()
         
     @staticmethod
-    def getDependencies(appname, deps=[], oan=None):
-        if deps == []: 
-            deps = cache.get(appname).get("pman", {}).get("depends", [])
-            oan = appname
+    def getDependencies(appname):
+        deps = cache.get(appname).get("pman", {}).get("depends", [])
         print appname + " depends on " + str(deps)
-        print deps
         for d in deps:
             if d == appname:
                 print "Warning: The app "+appname+" depends on itself."
+                deps.remove(d)
                 continue
-            sd = Installer.getDependencies(d, [], oan)
+            sd = cache.get(d).get("pman", {}).get("depends", [])
             for s in sd:
-                if s == oan:
-                    print "Warning: The dependency of "+appname+", "+s+", depends on the original package "+oan+"."
-                    continue
-                if (s not in deps) or (s in state.getApplicationList().getApplicationList() and cache.get(s).get("version") > state.getApplicationList().getApp(s).version):
+                if s not in deps and s != appname: 
                     deps.append(s)
         return deps
         
@@ -506,13 +502,17 @@ class Installer(object):
         toinst = [self.name] + deps
         post_install = []
         for tia in toinst:
+            if not self.local and tia in state.getApplicationList().getApplicationNames() and cache.get(tia).get("version") <= state.getApplicationList().getApp(tia).version:
+                print tia + " is already installed at the newest version."
+                toinst.remove(tia)
+                continue
             if cache.get(tia).get("pman", {}).get("min_os", 0.0) > pman.sysInf.get("version"):
                 self.dialog.update("!!! The install cannot continue because the package "+tia+" requires a newer version of Python OS.")
                 return
             pim = cache.get(tia).get("pman", {}).get("onInstalled", None)
             if pim != None:
                 post_install.append([tia, pim])
-        if tia == []:
+        if toinst == []:
             print self.name+" and all its dependencies are already installed."
             return
         self.dialog.update("The following packages will be installed:")

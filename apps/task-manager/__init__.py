@@ -12,10 +12,10 @@ def buildAppEntry(a):
     else:
         icon = pyos.GUI.Image((0,0), surface=state.getIcons().getLoadedIcon("unknown"))
     title = pyos.GUI.Text((40, 10), a.title, state.getColorPalette().getColor("item"), 20)
-    pauseBtn = pyos.GUI.Button((138, 0), "Pause", state.getColorPalette().getColor("background"), state.getColorPalette().getColor("item"),
+    pauseBtn = pyos.GUI.Button((app.ui.width-100, 0), "Pause", state.getColorPalette().getColor("background"), state.getColorPalette().getColor("item"),
                                20, width=50, height=40, border=1, borderColor=state.getColorPalette().getColor("accent"),
                                onClick=registerPauseClick, onClickData=(a, cont))
-    stopBtn = pyos.GUI.Button((188, 0), "Stop", state.getColorPalette().getColor("background"), state.getColorPalette().getColor("item"),
+    stopBtn = pyos.GUI.Button((app.ui.width-50, 0), "Stop", state.getColorPalette().getColor("background"), state.getColorPalette().getColor("item"),
                                20, width=50, height=40, border=1, borderColor=state.getColorPalette().getColor("accent"),
                                onClick=registerStopClick, onClickData=(a, cont))
     if a.thread.pause:
@@ -33,7 +33,7 @@ def buildAppEntry(a):
     return cont
 
 def registerPauseClick(a, cont):
-    pauseBtn = cont.getChildAt([138,0])
+    pauseBtn = cont.getChildAt([app.ui.width-100,0])
     if a.thread.stop or a.thread.firstRun: return
     if a.thread.pause:
         a.activate()
@@ -45,8 +45,8 @@ def registerPauseClick(a, cont):
         pauseBtn.refresh()
 
 def registerStopClick(a, cont):
-    pauseBtn = cont.getChildAt([138,0])
-    stopBtn = cont.getChildAt([188,0])
+    pauseBtn = cont.getChildAt([app.ui.width-100,0])
+    stopBtn = cont.getChildAt([app.ui.width-50,0])
     if a.thread.stop or a.thread.firstRun:
         a.activate()
         stopBtn.textComponent.text = "Stop"

@@ -22,6 +22,8 @@ from copy import deepcopy
 #state = None
 screen = None
 
+settings = {}
+
 DEFAULT = 0xada
     
 def readFile(path):
@@ -194,7 +196,7 @@ class GUI(object):
         global screen
         self.orientation = 0 #0 for portrait, 1 for landscape
         self.timer = None
-        self.update_interval = 30
+        self.update_interval = settings.get("target_fps", 30)
         pygame.init()
         pygame.display.set_icon(pygame.image.load("res/icons/menu.png"))
         if __import__("sys").platform == "linux2" and os.path.isdir("/home/pi"):
@@ -204,9 +206,8 @@ class GUI(object):
             self.height = info.current_h
             screen = pygame.display.set_mode((info.current_w, info.current_h))
         else:
-            scrdat = readJSON("res/settings.json")
-            screen = pygame.display.set_mode((scrdat.get("screen_size", {"width":240}).get("width"),
-                                              scrdat.get("screen_size", {"height":320}).get("height")), pygame.HWACCEL)
+            screen = pygame.display.set_mode((settings.get("screen_size", {"width":240}).get("width"),
+                                              settings.get("screen_size", {"height":320}).get("height")), pygame.HWACCEL)
             self.width = screen.get_width()
             self.height = screen.get_height()
         try:
@@ -842,7 +843,7 @@ class GUI(object):
                     words = requested_line.split(' ')
                     for word in words:
                         if font.size(word)[0] >= rect.width:
-                            print "The word " + word + " is too long to fit in the rect passed."
+                            #print "The word " + word + " is too long to fit in the rect passed."
                             err = 0
                     accumulated_line = ""
                     for word in words:
@@ -886,7 +887,7 @@ class GUI(object):
             self.justification = justification
             self.color = color
             self.size = size
-            self.text = str(text)
+            self.text = text if type(text) == str or type(text) == unicode else str(text)
             self.textSurface = None
             self.font = data.get("font", state.getFont())
             self.use_freetype = data.get("freetype", False)
@@ -936,8 +937,9 @@ class GUI(object):
                 if not fits:
                     self.height += self.lineHeight
                     self.computedHeight = self.height
-            if self.linkedScroller != None:
-                self.linkedScroller.refresh(False)
+            self.setDimensions()
+            #if self.linkedScroller != None:
+            #    self.linkedScroller.refresh(False)
             return surf
             
     class Image(Component):        
@@ -1106,7 +1108,7 @@ class GUI(object):
             pygame.draw.line(self.surface, state.getColorPalette().getColor("item"), (3*(self.computedWidth/4), self.computedHeight/4),
                              (3*(self.computedWidth/4), 3*(self.computedHeight/4)), 2)
             super(GUI.Switch, self).render(largerSurface)
-        
+                    
     class Canvas(Component):
         def __init__(self, position, **data):
             super(GUI.Canvas, self).__init__(position, **data)
@@ -1128,7 +1130,7 @@ class GUI(object):
             self.internalClickOverrides["onLongClick"] = (self.registerBlink, (True,))
             
         def registerBlink(self, lp=False):
-            self.blinkTime = state.getGUI().update_interval / 4
+            self.blinkTime = state.getGUI().update_interval / 6
             self.primaryTextComponent.color = state.getColorPalette().getColor("background")
             self.secondaryTextComponent.color = state.getColorPalette().getColor("background")
             self.backgroundColor = state.getColorPalette().getColor("accent" if lp else "item")
@@ -1592,7 +1594,7 @@ class GUI(object):
             super(GUI.ScrollableContainer, self).render(largerSurface)
             
         def refresh(self, children=True):
-            super(GUI.ScrollableContainer, self).refresh()
+            #super(GUI.ScrollableContainer, self).refresh()
             self.minOffset = 0
             for comp in self.container.childComponents:
                 if comp.computedPosition[1] < self.minOffset: self.minOffset = comp.computedPosition[1]
@@ -1637,7 +1639,7 @@ class GUI(object):
                 self.textComponent = textComponent
                 if self.textComponent.computedWidth == self.computedWidth:
                     self.textComponent.width = self.container.width
-                    self.textComponent.refresh()
+                    #self.textComponent.refresh()
             self.addChild(self.textComponent)
             
         def getTextComponent(self):
@@ -2417,6 +2419,9 @@ class ApplicationList(object):
         
     def getApplicationList(self):
         return self.applications.values()
+    
+    def getApplicationNames(self):
+        return self.applications.keys()
         
     def pushActiveApp(self, app):
         if app not in self.activeApplications:
@@ -2445,11 +2450,11 @@ class ApplicationList(object):
     def reloadList(self):
         applist = Application.getListings()
         for key in dict(applist).keys():
-            if applist.get(key) not in self.applications.keys():
-                try:
+            try:
+                if (applist.get(key) not in self.applications.keys()) and not state.getActiveApplication().name == key:
                     self.applications[applist.get(key)] = Application(key)
-                except:
-                    State.error_recovery("App init error: "+key, "NoAppDump")
+            except:
+                State.error_recovery("App init error: "+key, "NoAppDump")
         for key in self.applications.keys():
             if key not in applist.values():
                 del self.applications[key]
@@ -2721,7 +2726,6 @@ class State(object):
         while True:
             #Limit FPS
             state.getGUI().timer.tick(state.getGUI().update_interval)
-            state.getGUI().monitorFPS()
             #Update event queue
             state.getEventQueue().check()
             #Refresh main thread controller
@@ -2736,9 +2740,6 @@ class State(object):
             state.getFunctionBar().render()
             if state.getKeyboard() != None and state.getKeyboard().active:
                 state.getKeyboard().render(screen)
-            
-            if state.getGUI().update_interval <= 20:
-                pygame.draw.rect(screen, (255, 0, 0), [state.getGUI().width-5, state.getGUI().height-5, 5, 5])
             
             state.getGUI().refresh()
             #Check Events
@@ -2792,6 +2793,10 @@ class State(object):
         
     
 if __name__ == "__main__":
+    try:
+        settings = readJSON("res/settings.json")
+    except:
+        print "Error loading settings from res/settings.json"
     state = State()
     globals()["state"] = state
     __builtin__.state = state
