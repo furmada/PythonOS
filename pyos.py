@@ -274,7 +274,7 @@ class GUI(object):
             while curr_size <= maxSize:
                 if self.ft_support:
                     try:
-                        self.ft_sizes[curr_size] = self.freetype.Font(path, curr_size)
+                        self.ft_sizes[curr_size] = pygame.freetype.Font(path, curr_size)
                     except:
                         self.ft_support = False
                 self.sizes[curr_size] = pygame.font.Font(path, curr_size)
@@ -283,7 +283,7 @@ class GUI(object):
         def get(self, size=14, ft=False):
             if ft and self.ft_support:
                 if size not in self.ft_sizes:
-                    self.ft_sizes[size] = self.freetype.Font(self.path, size)
+                    self.ft_sizes[size] = pygame.freetype.Font(self.path, size)
                 return self.ft_sizes[size]
             else:
                 if size not in self.sizes:
@@ -1826,7 +1826,7 @@ class GUI(object):
             self.baseContainer.setPosition((0, 2*(state.getGUI().height/3)))
             self.keyWidth = self.baseContainer.computedWidth / 10
             self.keyHeight = self.baseContainer.computedHeight / 4
-            use_ft = state.getTypingFont().freetype != False
+            use_ft = state.getTypingFont().ft_support
             #if use_ft:
             self.shift_sym = u"⇧"
             self.enter_sym = u"⏎"
