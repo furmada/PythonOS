@@ -1,0 +1,13 @@
+{
+  "name": "picasso",
+  "title": "Painter",
+  "version": 1.0,
+  "author": "Adam Furman",
+  "module": "picasso",
+  "more": {
+    "icon": "picasso.png",
+    "onStart": "onStart",
+    "colorScheme": "normal"
+  },
+  "description": "Paint pretty pictures."
+}

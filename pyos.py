@@ -7,6 +7,10 @@ Created on Dec 27, 2015
 @copyright: MIT License
 '''
 import pygame
+try:
+    import pygame.freetype
+except ImportError:
+    pass
 import json
 import os
 import __builtin__
@@ -198,8 +202,11 @@ class GUI(object):
         self.timer = None
         self.update_interval = settings.get("target_fps", 30)
         pygame.init()
-        pygame.display.set_icon(pygame.image.load("res/icons/menu.png"))
-        if __import__("sys").platform == "linux2" and os.path.isdir("/home/pi"):
+        try:
+            pygame.display.set_icon(pygame.image.load("res/icons/menu.png"))
+        except:
+            pass
+        if __import__("sys").platform == "linux2" and os.path.exists("/etc/pyos"):
             pygame.mouse.set_visible(False)
             info = pygame.display.Info()
             self.width = info.current_w
@@ -262,19 +269,19 @@ class GUI(object):
             self.path = path
             curr_size = minSize
             self.sizes = {}
-            try:
-                self.freetype = __import__("pygame.freetype")
-            except:
-                self.freetype = False  
+            self.ft_support = True
             self.ft_sizes = {}
             while curr_size <= maxSize:
-                if self.freetype:
-                    self.ft_sizes[curr_size] = self.freetype.Font(path, curr_size)
+                if self.ft_support:
+                    try:
+                        self.ft_sizes[curr_size] = self.freetype.Font(path, curr_size)
+                    except:
+                        self.ft_support = False
                 self.sizes[curr_size] = pygame.font.Font(path, curr_size)
                 curr_size += 1
             
         def get(self, size=14, ft=False):
-            if ft:
+            if ft and self.ft_support:
                 if size not in self.ft_sizes:
                     self.ft_sizes[size] = self.freetype.Font(self.path, size)
                 return self.ft_sizes[size]

@@ -1,0 +1,19 @@
+Python OS 6 Error Report
+TIME: 2016-12-17 17:27:44.743000
+
+Open Applications: []
+Message: Event execution error
+Additional Data:
+Click event: <__main__.LongClickEvent object at 0x0456DB10>
+
+Traceback:
+Traceback (most recent call last):
+  File "C:\Users\Adam\Documents\eclipsepy\pyos6\pyos.py", line 2770, in main
+    clickedChild.onLongClick()
+  File "C:\Users\Adam\Documents\eclipsepy\pyos6\pyos.py", line 596, in onLongClick
+    self.eventBindings["onLongClick"]()
+  File "C:\Users\Adam\Documents\eclipsepy\pyos6\pyos.py", line 2257, in fullCloseCurrent
+    Application.fullCloseApp(state.getActiveApplication())
+  File "C:\Users\Adam\Documents\eclipsepy\pyos6\pyos.py", line 2252, in fullCloseApp
+    state.getApplicationList().getMostRecentActive().activate(fromFullClose=True)
+AttributeError: 'NoneType' object has no attribute 'activate'
