@@ -9,8 +9,8 @@ then
 	echo "Usage: devquickstart.bash [OPTIONS]"
 	echo
 	echo "Options: "
-	printf "	-create\tGenerate necesarry files in apps/helloworld and the helloworld directory itself.\n "
-    printf " 	-clean\tClean generated directory and files in apps/helloworld and helloworld directory itself.\n"
+	printf "	-create\t\tGenerate necesarry files in apps/helloworld and the helloworld directory itself.\n\n"
+    printf " 	-clean\t\tClean generated directory and files in apps/helloworld and helloworld directory itself.\n\n"
 fi
 
 if [[ $1 == '-create' ]]
@@ -44,6 +44,15 @@ __EOL__
 
 elif [[ $1 == '-clean' ]]
 then
-	rm -rf apps/helloworld/
-
+	if [[ -d apps/helloworld ]]
+	then
+		rm -rf apps/helloworld
+		echo "Success."
+	
+	else
+		echo "Directory is not exist."
+		exit 1	
+	fi	
 fi
+
+exit 0
