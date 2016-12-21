@@ -4,13 +4,22 @@
 # Example: ./devquickstart.bash -create
 # Example: ./devquickstart.bash -clean
 
-if [[ ! -d apps/helloworld ]]
+if [[ -z "$1" ]]
 then
-	mkdir apps/helloworld
+	echo "Usage: devquickstart.bash [OPTIONS]"
+	echo
+	echo "Options: "
+	printf "	-create\tGenerate necesarry files in apps/helloworld and the helloworld directory itself.\n "
+    printf " 	-clean\tClean generated directory and files in apps/helloworld and helloworld directory itself.\n"
 fi
 
 if [[ $1 == '-create' ]]
 then
+	if [[ ! -d apps/helloworld ]]
+	then
+
+		mkdir apps/helloworld
+	fi
 	cat << __EOL__ | expand -t4  > apps/helloworld/app.json
 {
 	"name": "helloworld",
