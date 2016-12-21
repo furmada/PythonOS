@@ -1,19 +1,18 @@
 #!/bin/bash
 
-# chmod +x devquickstart.bash before running, to make this file executable.
-# Example: ./devquickstart.bash -create
-# Example: ./devquickstart.bash -clean
-
+# chmod u+x devquickstart.bash before running, to make this file executable.
+# Example: ./devquickstart.bash --create
+# Example: ./devquickstart.bash --clean
 if [[ -z "$1" ]]
 then
 	echo "Usage: devquickstart.bash [OPTIONS]"
 	echo
 	echo "Options: "
-	printf "	-create\t\tGenerate necesarry files in apps/helloworld and the helloworld directory itself.\n\n"
-    printf " 	-clean\t\tClean generated directory and files in apps/helloworld and helloworld directory itself.\n\n"
+	printf "\t-create\t\tGenerate necesarry files in apps/helloworld and the helloworld directory itself.\n\n"
+    printf "\t-clean\t\tClean generated directory and files in apps/helloworld and helloworld directory itself.\n\n"
 fi
 
-if [[ $1 == '-create' ]]
+if [[ "$1" == '--create' -o "$1" == '-cr' ]]
 then
 	if [[ ! -d apps/helloworld ]]
 	then
@@ -42,13 +41,12 @@ def hello(state, app):
 __EOL__
 
 
-elif [[ $1 == '-clean' ]]
+elif [[ "$1" == '--clean' -o "$1" == 'cl' ]]
 then
 	if [[ -d apps/helloworld ]]
 	then
 		rm -rf apps/helloworld
 		echo "Success."
-	
 	else
 		echo "Directory is not exist."
 		exit 1	
