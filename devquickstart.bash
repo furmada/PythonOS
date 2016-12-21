@@ -12,7 +12,7 @@ then
     printf "\t-clean\t\tClean generated directory and files in apps/helloworld and helloworld directory itself.\n\n"
 fi
 
-if [[ "$1" == '--create' -o "$1" == '-cr' ]]
+if [[ "$1" == '--create' || "$1" == '-cr' ]]
 then
 	if [[ ! -d apps/helloworld ]]
 	then
@@ -41,7 +41,7 @@ def hello(state, app):
 __EOL__
 
 
-elif [[ "$1" == '--clean' -o "$1" == 'cl' ]]
+elif [[ "$1" == '--clean' || "$1" == 'cl' ]]
 then
 	if [[ -d apps/helloworld ]]
 	then
