@@ -1,13 +1,18 @@
 Python OS 6 
 ---
 
+### Notice
+This project is no longer being actively developed. Its successor project is [Polaron](https://github.com/furmada/Polaron), a more dynamic UI package useful for a wider array of applications.
+
+---
+
 [![GitHub Stars](https://img.shields.io/github/stars/furmada/pythonos.svg)](https://github.com/furmada/pythonos/stargazers)
 [![GitHub pull requests](https://img.shields.io/github/issues/furmada/pythonos.svg)](https://github.com/furmada/PythonOS/issues)
 [![GitHub Wiki](https://img.shields.io/badge/project-wiki-ff69b4.svg)](https://github.com/furmada/pythonos/wiki/Home)
 [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/furmada/PythonOS/master/LICENSE)
 [![Github All Releases](https://img.shields.io/github/downloads/furmada/pythonos/total.svg?maxAge=2592000)](https://github.com/furmada/PythonOS/releases)
 [![Build Status](https://travis-ci.org/furmada/PythonOS.svg?branch=master)](https://travis-ci.org/furmada/PythonOS)
-[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=D3S2P7GMS8MZJ)
+
 
 Python OS 6 is the ultimate interface for touch-enabled microcomputers such as the Raspberry Pi. It offers a complete interface replacement, an application management and distribution system, and a UI toolkit for creating event-driven apps in Python.
 
