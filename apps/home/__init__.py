@@ -9,7 +9,9 @@ def onLoad(s, a):
     app = a
     state = s
     welcomeText = pyos.GUI.Text((5, 5), "Welcome to Python OS 6.", state.getColorPalette().getColor("item"), 15)
+    tutorialText = pyos.GUI.Text((5, 20), "Tap the rectangles for your apps.", state.getColorPalette().getColor("item"), 15)
     app.ui.addChild(welcomeText)
+    app.ui.addChild(tutorialText)
     
 def onUnload():
     state.getFunctionBar().container.backgroundColor = state.getColorPalette().getColor("background")
