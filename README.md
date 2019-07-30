@@ -25,17 +25,17 @@ Key features include:
 * Color themes and icons that help you make beautiful, polished apps.
 * Easy persistent storage.
 
-##Donate to Python OS
+## Donate to Python OS
 Support the development of this platform by making a donation in any amount. You may choose to enter your name (or username) on the donation screen and it will be added to the About app. Thank you!
 
 [![](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=D3S2P7GMS8MZJ)
 
-##Get Started
-###As a User
+## Get Started
+### As a User
 
 Simply download Python OS either on your computer (with Python and Pygame installed), or flash the disk image for your Pi (coming soon).
 
-###As a Developer
+### As a Developer
 
 Download and try out Python OS first.
 
